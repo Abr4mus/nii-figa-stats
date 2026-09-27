@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>НИИ ФИГА — статистика баттла</title>
+  <meta name="theme-color" content="#080b10" />
+  <meta name="color-scheme" content="dark" />
+  <style>
+    :root {
+      --bg: #080b10;
+      --bg2: #111723;
+      --paper: #d8c49b;
+      --paper2: #b99d69;
+      --ink: #21160e;
+      --muted: #9aa7b7;
+      --text: #edf3f7;
+      --blue: #52b9ff;
+      --blue2: #173f68;
+      --rust: #f06d35;
+      --rust2: #6e2617;
+      --red: #b01916;
+      --gold: #e5bb67;
+      --green: #58d18b;
+      --panel: rgba(13, 18, 27, .82);
+      --panel2: rgba(21, 28, 40, .88);
+      --stroke: rgba(212, 224, 239, .16);
+      --shadow: 0 24px 70px rgba(0,0,0,.55);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(37, 122, 190, .22), transparent 34%),
+        radial-gradient(circle at 82% 24%, rgba(171, 58, 24, .28), transparent 34%),
+        radial-gradient(circle at 50% 98%, rgba(0, 0, 0, .95), transparent 50%),
+        linear-gradient(140deg, #07090d 0%, #0c1017 42%, #130c0a 100%);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 58px 58px;
+      mask-image: radial-gradient(circle at center, black, transparent 78%);
+      opacity: .55;
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg, rgba(255,255,255,.025), rgba(255,255,255,.025) 1px, transparent 1px, transparent 4px);
+      mix-blend-mode: overlay;
+      opacity: .35;
+      z-index: 1;
+    }
+
+    a { color: inherit; }
+    button, input, select, textarea { font: inherit; }
+
+    .wrap {
+      position: relative;
+      z-index: 2;
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 80px;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 360px;
+      padding: 34px;
+      border: 1px solid var(--stroke);
+      border-radius: 34px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      background:
+        linear-gradient(90deg, rgba(13, 39, 67, .88), rgba(9, 13, 20, .92) 46%, rgba(73, 24, 14, .88)),
+        radial-gradient(circle at 26% 35%, rgba(82,185,255,.25), transparent 28%),
+        radial-gradient(circle at 77% 45%, rgba(240,109,53,.23), transparent 30%);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      opacity: .18;
+      background:
+        repeating-linear-gradient(135deg, transparent 0 13px, rgba(255,255,255,.08) 13px 15px),
+        radial-gradient(circle at 50% 50%, transparent 0 45%, #000 100%);
+      pointer-events: none;
+    }
+
+    .hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.35fr .65fr; gap: 28px; align-items: end; }
+    .badge-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 13px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      background: rgba(0,0,0,.28);
+      color: #d8e8f8;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+    }
+    .dot { width: 9px; height: 9px; border-radius: 99px; background: var(--green); box-shadow: 0 0 18px var(--green); }
+    .dot.red { background: var(--rust); box-shadow: 0 0 18px var(--rust); }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 5.3vw, 76px);
+      line-height: .95;
+      letter-spacing: -.06em;
+      text-transform: uppercase;
+      max-width: 980px;
+    }
+    .quote { color: var(--gold); }
+    .hero p {
+      max-width: 860px;
+      margin: 22px 0 0;
+      color: #c9d5e1;
+      font-size: clamp(16px, 1.7vw, 20px);
+      line-height: 1.55;
+    }
+
+    .stamp {
+      justify-self: end;
+      width: min(320px, 100%);
+      aspect-ratio: 1.25;
+      display: grid;
+      place-items: center;
+      border: 4px solid rgba(176,25,22,.68);
+      color: rgba(255,100,85,.9);
+      transform: rotate(-6deg);
+      border-radius: 18px;
+      background: rgba(0,0,0,.22);
+      box-shadow: inset 0 0 0 2px rgba(176,25,22,.3);
+      text-align: center;
+      text-transform: uppercase;
+      font-weight: 1000;
+      letter-spacing: .12em;
+      font-size: 24px;
+      opacity: .92;
+    }
+    .stamp small { display:block; margin-top: 8px; color: rgba(255,210,190,.75); font-size: 12px; letter-spacing: .18em; }
+
+    .source-toggle {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 40;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: transparent;
+      opacity: 0;
+      font-size: 0;
+      cursor: default;
+      box-shadow: none;
+    }
+    .source-toggle:focus { outline: none; }
+    .source-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,.68);
+      backdrop-filter: blur(8px);
+    }
+    .source-modal.open { display: flex; }
+    .source-modal .topbar {
+      width: min(980px, 100%);
+      max-height: min(760px, calc(100vh - 40px));
+      overflow: auto;
+      margin: 0;
+      padding: 18px;
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(145deg, rgba(13,18,27,.96), rgba(12,13,16,.94));
+      box-shadow: var(--shadow);
+    }
+    .modal-head {
+      width: 100%;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom: 4px;
+    }
+    .modal-head h3 { margin:0; text-transform:uppercase; letter-spacing:.1em; }
+    .modal-close { min-width:42px; height:42px; border:1px solid rgba(255,255,255,.18); border-radius:14px; background:rgba(255,255,255,.08); color:#fff; font-size:24px; cursor:pointer; }
+
+    .topbar {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 18px 0;
+      flex-wrap: wrap;
+    }
+
+    .control-card {
+      flex: 1 1 360px;
+      padding: 18px;
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: 0 16px 38px rgba(0,0,0,.28);
+    }
+    .control-card h3 { margin: 0 0 11px; font-size: 16px; text-transform: uppercase; letter-spacing: .08em; color: #dce8f2; }
+    .control-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .field {
+      min-height: 44px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 14px;
+      background: rgba(0,0,0,.32);
+      color: var(--text);
+      outline: none;
+    }
+    input.field { flex: 1 1 260px; }
+    select.field { min-width: 190px; }
+    .btn {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #318ed2, #173f68);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 14px 28px rgba(19, 80, 124, .28);
+    }
+    .btn.rust { background: linear-gradient(135deg, #e56632, #7d2818); box-shadow: 0 14px 28px rgba(125, 40, 24, .28); }
+    .btn.ghost { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); box-shadow: none; }
+    .hint { margin-top: 10px; font-size: 13px; color: #95a4b4; line-height: 1.4; }
+    .hint code { color: #ffd28a; }
+    .status-line { margin-top: 10px; color: #9fb0c0; font-size: 13px; line-height: 1.4; }
+    .status-line.ok { color: #b8ffd3; }
+    .status-line.err { color: #ffaaa0; }
+    .checkline { display: inline-flex; align-items: center; gap: 8px; color: #c7d6e3; font-size: 13px; font-weight: 800; margin-top: 10px; }
+    .checkline input { width: 18px; height: 18px; accent-color: var(--blue); }
+
+    .grid { display: grid; gap: 18px; }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .section {
+      margin-top: 18px;
+      padding: 24px;
+      border: 1px solid var(--stroke);
+      border-radius: 30px;
+      background: linear-gradient(145deg, rgba(13,18,27,.92), rgba(12,13,16,.72));
+      box-shadow: var(--shadow);
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 14px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .eyebrow { margin: 0 0 6px; color: var(--gold); text-transform: uppercase; letter-spacing: .14em; font-size: 12px; font-weight: 900; }
+    h2 { margin: 0; font-size: clamp(26px, 3vw, 42px); letter-spacing: -.04em; }
+    .subtext { margin: 7px 0 0; color: var(--muted); line-height: 1.45; }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+        rgba(0,0,0,.24);
+      min-height: 160px;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 85% 10%, rgba(255,255,255,.12), transparent 28%);
+      opacity: .7;
+    }
+    .card.blue { border-color: rgba(82,185,255,.28); box-shadow: inset 0 0 45px rgba(82,185,255,.08); }
+    .card.rust { border-color: rgba(240,109,53,.3); box-shadow: inset 0 0 45px rgba(240,109,53,.08); }
+    .card.gold { border-color: rgba(229,187,103,.35); box-shadow: inset 0 0 45px rgba(229,187,103,.08); }
+    .card.black { border-color: rgba(0,0,0,.7); background: radial-gradient(circle at 50% 45%, rgba(0,0,0,.98), rgba(26,8,8,.58) 52%, rgba(0,0,0,.3)), rgba(0,0,0,.55); }
+    .card > * { position: relative; z-index: 1; }
+    .label { color: #9fb0c0; font-size: 12px; letter-spacing: .11em; text-transform: uppercase; font-weight: 900; }
+    .big { margin: 8px 0 2px; font-size: clamp(26px, 3vw, 46px); line-height: 1; font-weight: 1000; letter-spacing: -.05em; }
+    .metric { color: var(--gold); font-size: clamp(36px, 4vw, 62px); font-weight: 1000; letter-spacing: -.06em; margin: 7px 0; }
+    .meta { color: #b8c7d4; line-height: 1.5; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .pill { padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.12); color: #d8e3ed; font-size: 12px; font-weight: 800; }
+    .pill.blue { color: #bde7ff; border-color: rgba(82,185,255,.28); background: rgba(82,185,255,.09); }
+    .pill.rust { color: #ffc7ac; border-color: rgba(240,109,53,.3); background: rgba(240,109,53,.1); }
+    .pill.gold { color: #ffdf95; border-color: rgba(229,187,103,.36); background: rgba(229,187,103,.1); }
+    .pill.red { color: #ffaaa0; border-color: rgba(176,25,22,.35); background: rgba(176,25,22,.13); }
+    .pill.green { color: #b8ffd3; border-color: rgba(88,209,139,.35); background: rgba(88,209,139,.1); }
+
+
+    .winner-fireworks { position:absolute; inset:0; pointer-events:none; overflow:hidden; opacity:.95; }
+    .winner-fireworks::before, .winner-fireworks::after { content:""; position:absolute; width:150px; height:150px; border-radius:50%; background: repeating-conic-gradient(from 0deg, rgba(88,209,139,.9) 0 5deg, transparent 5deg 18deg, rgba(229,187,103,.9) 18deg 23deg, transparent 23deg 38deg); mask: radial-gradient(circle, transparent 0 22px, #000 23px 26px, transparent 27px 100%); filter: drop-shadow(0 0 12px rgba(88,209,139,.6)); animation: boom 2.4s ease-in-out infinite; }
+    .winner-fireworks::before { right: 24px; top: 18px; }
+    .winner-fireworks::after { left: 28px; bottom: 18px; transform: scale(.72); animation-delay:.55s; }
+    @keyframes boom { 0%,100% { transform: scale(.75) rotate(0deg); opacity:.38; } 45% { transform: scale(1.05) rotate(18deg); opacity:.95; } }
+    .winner-name { color:#58d18b; text-shadow:0 0 18px rgba(88,209,139,.45); }
+    .trophy { display:inline-grid; place-items:center; width:42px; height:42px; border-radius:14px; background:linear-gradient(135deg,#ffe28f,#ad741d); color:#1d1207; font-size:23px; box-shadow:0 0 18px rgba(229,187,103,.25); }
+    .no-trophy { display:inline-grid; place-items:center; width:42px; height:42px; color:#5f6b76; }
+
+    .table-wrap { overflow: auto; border-radius: 20px; border: 1px solid rgba(255,255,255,.12); }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; background: rgba(0,0,0,.18); }
+    th, td { padding: 13px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: middle; }
+    th { color: #d5e4ef; font-size: 12px; text-transform: uppercase; letter-spacing: .09em; background: rgba(255,255,255,.055); position: sticky; top: 0; }
+    td { color: #eef5fa; }
+    tr:hover td { background: rgba(255,255,255,.04); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .place { width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.09); font-weight: 1000; }
+    .place.first { background: linear-gradient(135deg, #ffd97d, #ad741d); color: #1e1308; }
+
+    .round-selector { display:flex; gap: 9px; flex-wrap: wrap; }
+    .round-chip {
+      border: 1px solid rgba(255,255,255,.13);
+      background: rgba(255,255,255,.055);
+      color: #d7e3ee;
+      border-radius: 14px;
+      min-width: 48px;
+      min-height: 42px;
+      padding: 0 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .round-chip.active { background: linear-gradient(135deg, var(--blue), var(--blue2)); color: white; box-shadow: 0 12px 26px rgba(82,185,255,.16); }
+
+    .profile-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 18px; align-items: start; }
+    .author-list {
+      max-height: 330px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      padding-right: 6px;
+    }
+    .author-btn {
+      width: 100%;
+      text-align: left;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      background: rgba(255,255,255,.055);
+      color: #eaf2f8;
+      padding: 12px 13px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .author-btn.active { border-color: rgba(82,185,255,.5); background: rgba(82,185,255,.13); color: #cfeeff; }
+
+    .timeline { display:grid; gap: 10px; }
+    .timeline-item {
+      display:grid;
+      grid-template-columns: 84px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px;
+      background: rgba(0,0,0,.18);
+    }
+    .timeline-item.miss { opacity: .62; }
+    .round-mark { font-weight: 1000; color: var(--gold); }
+
+    .king-list { display: flex; gap: 12px; flex-wrap: wrap; }
+    .king {
+      min-width: 220px;
+      flex: 1 1 220px;
+      padding: 16px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(229,187,103,.17), rgba(0,0,0,.25));
+      border: 1px solid rgba(229,187,103,.35);
+    }
+    .king strong { display:block; font-size: 20px; margin-bottom: 7px; }
+
+    .empty {
+      padding: 20px;
+      border: 1px dashed rgba(255,255,255,.18);
+      border-radius: 18px;
+      color: #aebdca;
+      background: rgba(255,255,255,.035);
+      line-height: 1.45;
+    }
+
+
+
+    /* Царь горы: визуальная гора с фигурками */
+    .mountain-scene {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.13);
+      background:
+        radial-gradient(circle at 50% 16%, rgba(229,187,103,.20), transparent 22%),
+        radial-gradient(circle at 18% 78%, rgba(82,185,255,.13), transparent 28%),
+        radial-gradient(circle at 82% 82%, rgba(240,109,53,.16), transparent 31%),
+        linear-gradient(180deg, rgba(8,12,18,.94), rgba(5,6,10,.99));
+      box-shadow: inset 0 0 80px rgba(0,0,0,.5), 0 28px 70px rgba(0,0,0,.42);
+      padding: 22px;
+    }
+
+    .mountain-sky-label { position: absolute; z-index: 6; top: 18px; left: 22px; right: 22px; display: flex; justify-content: space-between; gap: 14px; pointer-events: none; }
+    .mountain-sky-label .tag { padding: 9px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.28); color: #ffe2a3; font-size: 12px; font-weight: 1000; letter-spacing: .13em; text-transform: uppercase; backdrop-filter: blur(6px); }
+
+    .mountain-shape { position: absolute; z-index: 1; left: 50%; bottom: 88px; width: min(980px, 94%); height: 320px; transform: translateX(-50%); filter: drop-shadow(0 34px 32px rgba(0,0,0,.58)); pointer-events: none; }
+    .mountain-shape::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(58,68,82,.98), rgba(20,26,36,.98) 46%, rgba(74,36,23,.98)); clip-path: polygon(50% 0%, 96% 100%, 4% 100%); border: 1px solid rgba(255,255,255,.15); }
+    .mountain-shape::after { content: ""; position: absolute; left: 50%; top: 18px; width: 180px; height: 105px; transform: translateX(-50%); background: linear-gradient(135deg, rgba(229,238,242,.92), rgba(160,184,196,.75)); clip-path: polygon(50% 0%, 78% 100%, 54% 74%, 39% 100%, 22% 100%); opacity: .9; }
+
+    .ledge { position: absolute; z-index: 2; left: 50%; height: 18px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(231,205,150,.58), transparent); box-shadow: 0 10px 22px rgba(0,0,0,.35); pointer-events: none; }
+    .ledge.one { bottom: 330px; width: 250px; transform: translateX(-50%); }
+    .ledge.two { bottom: 252px; width: 560px; transform: translateX(-50%); opacity: .75; }
+    .ledge.three { bottom: 188px; width: 760px; transform: translateX(-50%); opacity: .48; }
+
+    .summit-stage { position: relative; z-index: 5; width: min(1120px, calc(100% - 36px)); min-height: 0; margin: 74px auto 8px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 10px; padding: 0 18px 8px; }
+
+    .ground-zone { position: relative; z-index: 5; margin: 8px 2px 0; min-height: 112px; padding: 16px 18px 12px; border-radius: 26px; border: 1px solid rgba(240,109,53,.22); background: radial-gradient(ellipse at 50% 100%, rgba(0,0,0,.92), rgba(37,9,8,.68) 48%, rgba(0,0,0,.25) 74%), rgba(0,0,0,.25); box-shadow: inset 0 18px 50px rgba(0,0,0,.4); }
+    .ground-zone::before { content: ""; position: absolute; left: 5%; right: 5%; top: 34px; height: 20px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(240,109,53,.3), transparent); opacity: .7; }
+    .ground-title { position: relative; z-index: 2; margin: 0 0 12px; color: #ffb79b; font-size: 13px; font-weight: 1000; letter-spacing: .14em; text-transform: uppercase; }
+
+    .figures-row { position: relative; z-index: 2; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 12px; }
+    .ground-zone .figures-row { justify-content: center; align-items: flex-end; gap: 14px 12px; }
+
+    .figure-card { --c1: #52b9ff; --c2: #173f68; position: relative; width: 92px; min-height: 138px; display: grid; grid-template-rows: 72px auto auto; justify-items: center; align-content: start; gap: 5px; padding: 10px 7px 8px; border-radius: 18px; border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.075); backdrop-filter: blur(4px); }
+    .figure-card.on-mountain { background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.18)); box-shadow: 0 18px 20px rgba(0,0,0,.28); transform: none; }
+    .figure-card.on-mountain .figure { transform: scale(.74); transform-origin: top center; height: 70px; margin-bottom: 0; }
+    .figure-card.on-mountain .fig-name { font-size: 11px; background: rgba(0,0,0,.28); border-radius: 9px; padding: 3px 4px; }
+    .figure-card.on-mountain .fig-stat { font-size: 10px; }
+    
+    .figure-card.fallen { width: 92px; min-height: 138px; grid-template-rows: 72px auto auto; align-items: start; justify-items: center; opacity: .86; transform: rotate(var(--fall, -6deg)); background: rgba(70,22,15,.22); border-color: rgba(240,109,53,.25); }
+
+    .figure { position: relative; width: 58px; height: 86px; filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); }
+    .figure .head { position: absolute; left: 15px; top: 0; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #f4d5b0, #9a6344); border: 3px solid rgba(20,14,10,.9); z-index: 3; }
+    .figure .body { position: absolute; left: 10px; top: 28px; width: 40px; height: 42px; border-radius: 16px 16px 12px 12px; background: linear-gradient(135deg, var(--c1), var(--c2)); border: 3px solid rgba(20,14,10,.9); z-index: 2; }
+    .figure .leg-l, .figure .leg-r, .figure .arm-l, .figure .arm-r { position: absolute; background: rgba(20,14,10,.95); border-radius: 999px; z-index: 1; }
+    .figure .arm-l { width: 8px; height: 38px; left: 4px; top: 33px; transform: rotate(18deg); }
+    .figure .arm-r { width: 8px; height: 38px; right: 2px; top: 32px; transform: rotate(-18deg); }
+    .figure .leg-l { width: 9px; height: 31px; left: 18px; top: 64px; transform: rotate(7deg); }
+    .figure .leg-r { width: 9px; height: 31px; right: 14px; top: 64px; transform: rotate(-7deg); }
+    .figure .prop { position: absolute; z-index: 4; font-size: 25px; right: -7px; top: -11px; filter: drop-shadow(0 4px 4px rgba(0,0,0,.45)); }
+
+    .figure.cat .head::before, .figure.cat .head::after, .figure.bear .head::before, .figure.bear .head::after { content: ""; position: absolute; top: -10px; width: 14px; height: 14px; background: inherit; border: 3px solid rgba(20,14,10,.9); border-radius: 6px 6px 10px 10px; z-index: -1; }
+    .figure.cat .head::before { left: -8px; transform: rotate(-25deg); }
+    .figure.cat .head::after { right: -8px; transform: rotate(25deg); }
+    .figure.bear .head::before { left: -9px; border-radius: 50%; }
+    .figure.bear .head::after { right: -9px; border-radius: 50%; }
+    .figure.bird .arm-l, .figure.bird .arm-r { width: 26px; height: 12px; top: 38px; background: linear-gradient(135deg, var(--c1), var(--c2)); border: 2px solid rgba(20,14,10,.9); }
+    .figure.bird .arm-l { left: -8px; transform: rotate(-25deg); }
+    .figure.bird .arm-r { right: -10px; transform: rotate(25deg); }
+    .figure.ring::before { content: ""; position: absolute; left: 5px; top: -12px; width: 48px; height: 18px; border: 5px solid #f2d179; border-radius: 50%; z-index: 5; transform: rotate(-8deg); box-shadow: 0 0 12px rgba(242,209,121,.65); }
+    .figure.criminal .body { background: repeating-linear-gradient(90deg, #111 0 7px, #f2d179 7px 14px); }
+    .figure.space .head { box-shadow: 0 0 0 7px rgba(178,231,255,.35); }
+    .figure.space .body { background: linear-gradient(135deg, #dfefff, #2464a8); }
+    .figure.warrior .body { background: linear-gradient(135deg, #b8c8d8, #3a4655); }
+    .figure.faith .body { background: linear-gradient(135deg, #6c4bb4, #2c183f); }
+    .figure.diver .head::after { content:""; position:absolute; left:3px; right:3px; bottom:4px; height:5px; border-radius:999px; background:rgba(35,24,18,.9); }
+    .figure.diver .body { background: linear-gradient(135deg, #1c8a9e, #0c3443); }
+    .figure.chemist .body { background: linear-gradient(135deg, #e8f7ff, #2e8bd0); }
+    .figure.biologist .body { background: linear-gradient(135deg, #7ee0a2, #17683c); }
+    .figure.scientist .body { background: linear-gradient(135deg, #e8f7ff, #33485c); }
+    .figure.old .head::before, .figure.old .head::after { content:""; position:absolute; top:5px; width:8px; height:8px; border-radius:50%; background:#e8e8e8; }
+    .figure.old .head::before { left:-2px; } .figure.old .head::after { right:-2px; }
+    .figure.gopnik .body { background: linear-gradient(135deg, #2d6d38, #111); }
+    .figure.gopnik .head::before { content:""; position:absolute; left:3px; top:8px; width:8px; height:8px; border-radius:50%; background:#52b9ff; box-shadow:16px 0 0 #f06d35; z-index:5; }
+    .figure.gopnik .head::after { content:""; position:absolute; left:2px; right:2px; top:-4px; height:9px; border-radius:999px; background:#1b1b1b; }
+
+    .figure.fallen-fig { transform: rotate(83deg); transform-origin: 50% 75%; }
+    .figure-card.fallen .figure { width: 58px; height: 76px; transform: scale(.74) rotate(83deg); transform-origin: 50% 75%; }
+    .figure-card.fallen .fig-text { padding-left: 0; width: 100%; }
+
+    .fig-text { position: relative; z-index: 8; width: 100%; }
+    .fig-name { width: 100%; color: #f4f8fb; font-weight: 900; font-size: 12px; line-height: 1.15; text-align: center; word-break: break-word; }
+    .figure-card.fallen .fig-name { text-align: center; background: rgba(0,0,0,.28); border-radius: 9px; padding: 3px 4px; font-size: 11px; }
+    .fig-stat { color: #aebdca; font-size: 11px; text-align: center; }
+    .figure-card.fallen .fig-stat { text-align: center; font-size: 10px; }
+    .mountain-note { position: relative; z-index: 6; margin: 4px 28px 8px; color: #c6d1dc; font-size: 13px; line-height: 1.45; text-align: center; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+
+    @media (max-width: 760px) {
+      .mountain-scene { min-height: 0; }
+      .summit-stage { width: calc(100% - 16px); gap: 7px; min-height: 0; margin-top: 72px; }
+      .figure-card { width: 90px; min-height: 136px; }
+      .figure-card.fallen { width: 90px; min-height: 136px; }
+      .mountain-note { margin-top: 4px; margin-bottom: 8px; }
+      .ground-zone { min-height: 145px; }
+    }
+
+    details {
+      margin-top: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      background: rgba(0,0,0,.18);
+      padding: 14px 16px;
+    }
+    summary { cursor: pointer; font-weight: 900; color: #dfeaf2; }
+    pre {
+      overflow:auto;
+      padding: 16px;
+      border-radius: 14px;
+      background: #07090d;
+      color: #c8d5df;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .footer { margin-top: 18px; color: #8392a3; text-align: center; font-size: 13px; }
+
+    @media (max-width: 980px) {
+      .hero-inner, .grid.cols-3, .grid.cols-2, .profile-grid { grid-template-columns: 1fr; }
+      .stamp { justify-self: start; width: 260px; }
+      .section { padding: 18px; border-radius: 24px; }
+    }
+
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 18px, 1440px); padding-top: 10px; }
+      .hero { padding: 22px; border-radius: 24px; }
+      .timeline-item { grid-template-columns: 1fr; }
+      .control-line { align-items: stretch; }
+      .btn, .field { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <div class="badge-row">
+            <span class="badge"><span class="dot"></span> архив активен</span>
+            <span class="badge"><span class="dot red"></span> под грифом «секретно»</span>
+            <span class="badge">личные дела участников</span>
+          </div>
+          <h1>Баттл рассказов <span class="quote">«НИИ ФИГА»</span></h1>
+          <p>Интерактивная витрина статистики: победители раундов, лидеры баттла, личные дела авторов и «Царь горы» — участники, которые ещё не пропустили ни одного этапа.</p>
+        </div>
+        <div class="stamp">допуск<br>подтверждён<small>отдел статистики</small></div>
+      </div>
+    </header>
+
+    <button id="sourceToggle" class="source-toggle" aria-label="Источник данных" title=""></button>
+    <div id="sourceModal" class="source-modal">
+    <section class="topbar">
+      <div class="modal-head"><h3>Источник данных</h3><button id="sourceClose" class="modal-close" type="button">×</button></div>
+      <div class="control-card">
+        <h3>Google-таблица</h3>
+        <div class="control-line">
+          <input id="dataUrl" class="field" placeholder="Вставь ссылку на Google Таблицу или опубликованный CSV" />
+          <button id="loadUrl" class="btn">Подключить</button>
+          <button id="refreshData" class="btn rust">Обновить</button>
+          <button id="resetData" class="btn ghost">Демо</button>
+        </div>
+        <label class="checkline"><input id="autoRefresh" type="checkbox" /> Автообновление раз в 60 сек.</label>
+        <div id="loadStatus" class="status-line">Можно вставить обычную ссылку вида <code>docs.google.com/spreadsheets/d/.../edit?gid=...</code>. Сайт сам превратит её в CSV.</div>
+      </div>
+      <div class="control-card">
+        <h3>Резерв: CSV вручную</h3>
+        <div class="control-line">
+          <input id="fileInput" class="field" type="file" accept=".csv,text/csv" />
+        </div>
+        <div class="hint">Если Google временно не откроется, можно загрузить экспортированный CSV вручную. Сайт понимает твой формат таблицы с колонками <code>имя; кол-во рассказов; ...; 1;2;3...</code>.</div>
+      </div>
+    </section>
+    </div>
+
+    <section class="section" id="rounds">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">раздел 01</p>
+          <h2>Победитель раунда</h2>
+          <p class="subtext">Выбери раунд, чтобы увидеть победителя, топ-3 и полный список работ.</p>
+        </div>
+        <div class="round-selector" id="roundSelector"></div>
+      </div>
+
+      <div class="grid cols-2">
+        <article class="card gold" id="roundWinnerCard"></article>
+        <article class="card blue" id="roundSummaryCard"></article>
+      </div>
+      <div style="height:18px"></div>
+      <div class="table-wrap">
+        <table id="roundTable"></table>
+      </div>
+    </section>
+
+    <section class="section" id="leaders">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">раздел 02</p>
+          <h2>Лидеры баттла</h2>
+          <p class="subtext">Три главные номинации: победы, максимум голосов за баттл и процент побед.</p>
+        </div>
+      </div>
+
+      <div class="grid cols-3">
+        <article class="card gold" id="winsLeader"></article>
+        <article class="card rust" id="maxPercentLeader"></article>
+        <article class="card blue" id="effLeader"></article>
+      </div>
+      <div style="height:18px"></div>
+      <div class="grid">
+        <div>
+          <h3 class="label">Рейтинг по победам</h3>
+          <div class="table-wrap"><table id="winsTable"></table></div>
+        </div>
+        <div>
+          <h3 class="label">Рейтинг по % побед</h3>
+          <div class="table-wrap"><table id="effTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="king">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">раздел 03</p>
+          <h2>Царь горы</h2>
+          <p class="subtext">На горе остаются только те, кто сдал рассказ в каждом завершённом/учтённом раунде с первого этапа.</p>
+        </div>
+        <article class="card black" style="min-height:unset; padding:16px 20px; min-width:260px;">
+          <div class="label">раундов учтено</div>
+          <div class="metric" id="roundsCount">0</div>
+        </article>
+      </div>
+      <div class="mountain-scene" id="mountainScene">
+        <div class="mountain-sky-label">
+          <span class="tag">на вершине</span>
+        </div>
+        <div class="mountain-shape"></div>
+        <div class="ledge one"></div>
+        <div class="ledge two"></div>
+        <div class="ledge three"></div>
+        <div class="summit-stage">
+          <div class="figures-row" id="kingTopFigures"></div>
+        </div>
+        <div class="mountain-note" id="mountainNote"></div>
+        <div class="ground-zone">
+          <p class="ground-title">упавшие у подножия</p>
+          <div class="figures-row" id="kingFallenFigures"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="profile">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">раздел 04</p>
+          <h2>Личное дело автора</h2>
+          <p class="subtext">Выберите участника, чтобы увидеть его статус, рассказы, победы и личную статистику.</p>
+        </div>
+        <input id="authorSearch" class="field" placeholder="Поиск по автору..." />
+      </div>
+
+      <div class="profile-grid">
+        <div class="card">
+          <div class="label">участники</div>
+          <div style="height:12px"></div>
+          <div class="author-list" id="authorList"></div>
+        </div>
+        <div id="profileCard"></div>
+      </div>
+    </section>
+
+    <div class="footer">НИИ ФИГА • отдел статистического наблюдения • данные обновляются согласно протоколу</div>
+  </main>
+
+  <script>
+    const sampleCsv = `;;;;;;;Раунды;;;;;;;;;;
+имя;кол-во рассказов;кол-во побед;% голосов (max);% побед к кол-ву рассказов;не пропустил ни одного раунда;;1;2;3;4;5;6;7;8;9;10;имя
+1. Винни-Пух;1;;36,36;0,0%;;;;;;;;;;;;;1. Винни-Пух
+2. Кислый;1;;15;0,0%;;;;;;;;;;;;;2. Кислый
+3. Козинак;1;;40;0,0%;;;;;;;;;;;;;3. Козинак
+4. Козодой;1;;13,33;0,0%;;;;;;;;;;;;;4. Козодой
+5. Аннигилятор Котиков;1;;5,26;0,0%;;;;;;;;;;;;;5. Аннигилятор Котиков
+6. Вольдемар Карасик;1;;25;0,0%;;;;;;;;;;;;;6. Вольдемар Карасик
+7. Афёрый;1;;21,05;0,0%;;;;;;;;;;;;;7. Афёрый
+8. Спарк;1;;50;0,0%;;;;;;;;;;;;;8. Спарк
+9. Константин Недов;1;;60;0,0%;;;;;;;;;;;;;9. Константин Недов
+10. Божий одуванчик;1;;20;0,0%;;;;;;;;;;;;;10. Божий одуванчик
+11. Кухлёма;1;;10;0,0%;;;;;;;;;;;;;11. Кухлёма
+12. Н.А. Нанайкина;1;;20;0,0%;;;;;;;;;;;;;12. Н.А. Нанайкина
+13. Вороний глаз;1;;25;0,0%;;;;;;;;;;;;;13. Вороний глаз
+14. Кольцо;1;;53,85;0,0%;;;;;;;;;;;;;14. Кольцо
+15. Шиз;1;;15,38;0,0%;;;;;;;;;;;;;15. Шиз`;
+
+    const DEFAULT_GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1dnNX9N49fKJmTLf_GrxlJYEs6RJPPvi_DOXi-197nRU/edit?usp=sharing';
+
+    let rows = [];
+    let authorSummaries = new Map();
+    let roundStories = new Map();
+    let sourceMode = 'long';
+    let stats = null;
+    let selectedRound = null;
+    let selectedAuthor = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function detectDelimiter(text) {
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim()).slice(0, 5);
+      const score = (d) => lines.reduce((s,l)=>s+(l.split(d).length-1),0);
+      const candidates = [';', ',', '\t'];
+      return candidates.sort((a,b)=>score(b)-score(a))[0] || ',';
+    }
+
+    function parseDelimited(text, delimiter) {
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim().length);
+      const parseLine = (line) => {
+        const out = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+            else inQ = !inQ;
+          } else if (ch === delimiter && !inQ) { out.push(cur); cur = ''; }
+          else cur += ch;
+        }
+        out.push(cur);
+        return out.map(v => v.trim());
+      };
+      return lines.map(parseLine);
+    }
+
+    function cleanAuthorName(s) {
+      return String(s ?? '').trim().replace(/^\d+[.)]\s*/,'').trim();
+    }
+
+    function parseCsv(text) {
+      authorSummaries = new Map();
+      const delimiter = detectDelimiter(text);
+      const grid = parseDelimited(text, delimiter);
+      if (!grid.length) return [];
+
+      const wideHeaderIndex = grid.findIndex(row => {
+        const cells = row.map(c => String(c).trim().toLowerCase());
+        const hasName = cells.some(c => c === 'имя');
+        const hasStories = cells.some(c => c.includes('кол-во рассказ'));
+        const hasRoundCols = cells.some(c => c === '1') && cells.some(c => c === '10');
+        return hasName && hasStories && hasRoundCols;
+      });
+
+      if (wideHeaderIndex >= 0) {
+        sourceMode = 'wide';
+        return parseWideTable(grid, wideHeaderIndex);
+      }
+
+      sourceMode = 'long';
+      const headers = grid[0].map(h => h.trim());
+      return grid.slice(1).map(vals => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i] ?? '');
+        return normalizeRow(obj);
+      }).filter(r => r.author && r.round);
+    }
+
+    function parseWideTable(grid, headerIndex) {
+      const headers = grid[headerIndex].map(h => h.trim());
+      const lower = headers.map(h => h.toLowerCase());
+      const idx = (needle) => lower.findIndex(h => h.includes(needle));
+      const nameCol = lower.findIndex(h => h === 'имя');
+      const storiesCol = idx('кол-во рассказ');
+      const winsCol = idx('кол-во побед');
+      const maxCol = idx('% голосов');
+      const totalVotesCol = idx('голосов общее');
+      const rateCol = idx('% побед');
+      const noMissCol = idx('не пропустил');
+      const roundCols = headers
+        .map((h, i) => ({ h, i, round: /^\d+$/.test(h) ? Number(h) : null }))
+        .filter(x => x.round !== null);
+
+      const out = [];
+      for (const row of grid.slice(headerIndex + 1)) {
+        const rawAuthor = row[nameCol] || row[row.length - 1] || '';
+        const author = cleanAuthorName(rawAuthor);
+        if (!author) continue;
+
+        const stories = Math.trunc(num(row[storiesCol]));
+        const wins = Math.trunc(num(row[winsCol]));
+        const maxPercent = maxCol >= 0 ? num(row[maxCol]) : 0;
+        const totalVotesSummary = totalVotesCol >= 0 ? num(row[totalVotesCol]) : 0;
+        const winRate = rateCol >= 0 ? num(row[rateCol]) : 0;
+        const noMissRaw = String(row[noMissCol] ?? '').trim().toLowerCase();
+        const noMiss = ['yes','да','true','1','+','царь','царь горы','x','х'].includes(noMissRaw);
+        authorSummaries.set(author, { author, stories, wins, maxPercent, totalVotesSummary, winRate, noMiss });
+
+        for (const rc of roundCols) {
+          const raw = String(row[rc.i] ?? '').trim();
+          const hasNumber = /\d/.test(raw);
+          const percent = hasNumber ? num(raw) : 0;
+          const submitted = !!raw;
+          const win = /побед|win|winner/i.test(raw);
+          out.push({
+            round: rc.round,
+            round_name: getRoundName(rc.round),
+            author,
+            story_title: '',
+            submitted,
+            votes: 0,
+            percent,
+            place: null,
+            win,
+            rawRoundValue: raw,
+            hasRoundScore: hasNumber
+          });
+        }
+      }
+
+      // Если в колонках раундов указаны числовые результаты, автоматически считаем места и победителей.
+      // Если там просто «да», считаем, что работа сдана, но победителя по раунду не определяем.
+      for (const round of [...new Set(out.map(r => r.round))]) {
+        const scored = out.filter(r => r.round === round && r.submitted && r.hasRoundScore).sort((a,b)=>b.percent-a.percent);
+        scored.forEach((r, i) => r.place = i + 1);
+        const max = scored[0]?.percent ?? null;
+        if (max !== null) scored.forEach(r => { if (r.percent === max) r.win = true; });
+      }
+
+      return out;
+    }
+
+    function getRoundName(round) {
+      const names = {
+        1: 'Личное дело', 2: 'Первый опыт', 3: 'Неверный шаг', 4: 'Ночное дежурство', 5: 'Охота',
+        6: 'Подопыты', 7: 'Аномальное', 8: 'Пропавшее', 9: 'Днище', 10: 'Утилизация'
+      };
+      return names[round] || ('Раунд ' + round);
+    }
+
+    function pick(obj, names, fallback='') {
+      for (const n of names) if (obj[n] !== undefined && String(obj[n]).trim() !== '') return obj[n];
+      return fallback;
+    }
+
+    function num(v) {
+      if (v === undefined || v === null || v === '') return 0;
+      const s = String(v).replace('%','').replace(/\s/g,'').replace(',', '.').trim();
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function bool(v) {
+      const s = String(v ?? '').trim().toLowerCase();
+      return ['yes','y','true','1','да','истина','победа','win','winner','сдано','+','x','х'].includes(s);
+    }
+
+    function normalizeRow(obj) {
+      const round = Math.trunc(num(pick(obj, ['round','Раунд','раунд','№ раунда','Номер раунда'])));
+      const round_name = pick(obj, ['round_name','Тема','тема','Раунд название','Название раунда','round title'], getRoundName(round));
+      const author = cleanAuthorName(pick(obj, ['author','Автор','автор','Участник','участник','Псевдоним','Ник','имя']));
+      const story_title = pick(obj, ['story_title','Рассказ','рассказ','Название рассказа','Работа','work','title']);
+      const submittedRaw = pick(obj, ['submitted','Сдано','сдано','Статус','status'], story_title ? 'yes' : 'no');
+      const votes = num(pick(obj, ['votes','Голоса','голоса','Кол-во голосов','Количество голосов']));
+      const percent = num(pick(obj, ['percent','%','% голосов','% голосов (max)','Процент','процент']));
+      const placeRaw = pick(obj, ['place','Место','место'], '');
+      const place = placeRaw === '' ? null : Math.trunc(num(placeRaw));
+      const winRaw = pick(obj, ['win','Победа','победа','winner','Победитель'], '');
+      const submitted = bool(submittedRaw) || (!!story_title && String(submittedRaw).toLowerCase() !== 'no');
+      const win = bool(winRaw) || place === 1;
+      return { round, round_name, author, story_title, submitted, votes, percent, place, win, hasRoundScore: true };
+    }
+
+    function fmtPct(v) { return (Math.round((v || 0) * 10) / 10).toLocaleString('ru-RU') + '%'; }
+    function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    function computeStats(data) {
+      const roundsFromRows = [...new Set(data.map(r => r.round))].filter(Boolean);
+      const roundNums = new Set([...roundsFromRows]);
+      if (sourceMode === 'wide') for (let i=1; i<=10; i++) roundNums.add(i);
+      const rounds = [...roundNums].sort((a,b)=>a-b);
+      const authors = [...new Set([...data.map(r => r.author), ...authorSummaries.keys()])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'ru'));
+      const roundNames = new Map();
+      rounds.forEach(r => roundNames.set(r, getRoundName(r)));
+      data.forEach(r => { if (r.round_name) roundNames.set(r.round, r.round_name); });
+
+      const countedRounds = roundsFromRows.filter(round => data.some(r => r.round === round && r.submitted));
+      const winnerRounds = roundsFromRows.filter(round => data.some(r => r.round === round && r.win));
+
+      const byAuthor = authors.map(author => {
+        const all = data.filter(r => r.author === author);
+        const works = all.filter(r => r.submitted);
+        const summary = authorSummaries.get(author);
+        const computedWins = works.filter(r => r.win).length;
+        const computedStories = works.length;
+        const stories = Math.max(computedStories, summary?.stories || 0);
+        const wins = Math.max(computedWins, summary?.wins || 0);
+        const bestWork = works.slice().sort((a,b)=>b.percent-a.percent || b.votes-a.votes)[0] || null;
+        let best = bestWork;
+        if (summary && summary.maxPercent && (!best || summary.maxPercent > best.percent)) {
+          best = { percent: summary.maxPercent, votes: 0, round: null, round_name: 'из общей таблицы', story_title: '' };
+        }
+        const effectiveWorks = works.filter(r => winnerRounds.includes(r.round));
+        const effectiveStories = effectiveWorks.length;
+        const effectiveWins = effectiveWorks.filter(r => r.win).length;
+        const winRate = effectiveStories ? effectiveWins / effectiveStories * 100 : 0;
+        const totalVotes = Math.max(works.reduce((s,r)=>s+r.votes,0), summary?.totalVotesSummary || 0);
+        const avgPercent = computedStories ? works.reduce((s,r)=>s+r.percent,0)/computedStories : 0;
+        return { author, all, works, wins, stories, winRate, effectiveStories, effectiveWins, best, totalVotes, avgPercent, noMiss: !!summary?.noMiss };
+      });
+
+      const winsRank = byAuthor.slice().sort((a,b)=>b.wins-a.wins || b.stories-a.stories || b.totalVotes-a.totalVotes);
+      const maxRank = byAuthor.filter(a=>a.best).slice().sort((a,b)=>(b.best?.percent||0)-(a.best?.percent||0) || (b.best?.votes||0)-(a.best?.votes||0));
+      const voteRank = byAuthor.filter(a=>a.totalVotes > 0).slice().sort((a,b)=>b.totalVotes-a.totalVotes || b.wins-a.wins || b.stories-a.stories);
+      const effRank = byAuthor.filter(a=>a.effectiveStories > 0).slice().sort((a,b)=>b.winRate-a.winRate || b.effectiveWins-a.effectiveWins || b.effectiveStories-a.effectiveStories || a.author.localeCompare(b.author,'ru'));
+
+      const king = byAuthor.filter(a => countedRounds.length && countedRounds.every(round => a.all.some(r => r.round === round && r.submitted)));
+
+      const selectableRounds = countedRounds.slice().sort((a,b)=>a-b);
+
+      return { rounds, selectableRounds, roundNames, authors, byAuthor, winsRank, maxRank, voteRank, effRank, countedRounds, winnerRounds, king };
+    }
+
+    function renderAll() {
+      stats = computeStats(rows);
+      if (!selectedRound || !stats.selectableRounds.includes(selectedRound)) selectedRound = stats.selectableRounds[0] || null;
+      if (!selectedAuthor || !stats.authors.includes(selectedAuthor)) selectedAuthor = stats.authors[0] || null;
+      renderRounds(); renderLeaders(); renderKing(); renderAuthors(); renderProfile();
+    }
+
+    function shouldShowInRound(author, round) {
+      const authorRows = rows.filter(r => r.author === author && r.round <= round).sort((a,b)=>a.round-b.round);
+      const current = authorRows.find(r => r.round === round);
+      if (current?.submitted) return true;
+      let misses = 0;
+      for (let r = round; r >= 1; r--) {
+        const row = rows.find(x => x.author === author && x.round === r);
+        if (row && row.submitted) break;
+        misses++;
+      }
+      return misses < 3;
+    }
+
+    function renderRounds() {
+      const sel = $('roundSelector');
+      const selectable = stats.selectableRounds || [];
+      sel.innerHTML = selectable.length
+        ? selectable.map(r => `<button class="round-chip ${r===selectedRound?'active':''}" data-round="${r}">${r}</button>`).join('')
+        : '<span class="empty">Пока нет раундов с заполненными данными.</span>';
+      sel.querySelectorAll('button').forEach(b => b.onclick = () => { selectedRound = Number(b.dataset.round); renderRounds(); });
+
+      if (!selectedRound) {
+        $('roundWinnerCard').innerHTML = `<div class="empty">Пока ни один раунд не заполнен. Как только в колонке раунда появится «да» или «победил», раунд станет доступен.</div>`;
+        $('roundSummaryCard').innerHTML = `<div class="empty">Нет данных по раундам.</div>`;
+        $('roundTable').innerHTML = tableHtml(['Автор','Кол-во рассказов','Кол-во побед','Голосов всего','% побед'], stats.byAuthor.map(a => [
+          esc(a.author), `<span class="num">${a.stories}</span>`, `<span class="num">${a.wins}</span>`, `<span class="num">${a.totalVotes || (a.best ? fmtPct(a.best.percent) : '—')}</span>`, `<span class="num">${fmtPct(a.winRate)}</span>`
+        ]));
+        return;
+      }
+
+      const list = rows
+        .filter(r => r.round === selectedRound)
+        .filter(r => shouldShowInRound(r.author, selectedRound))
+        .sort((a,b)=>(a.place??999)-(b.place??999) || b.percent-a.percent || a.author.localeCompare(b.author,'ru'));
+      const submitted = list.filter(r=>r.submitted);
+      const explicitWinners = submitted.filter(r => r.win);
+      const scoredSubmitted = submitted.filter(r => r.hasRoundScore !== false);
+      let winners = explicitWinners;
+      if (!winners.length && scoredSubmitted.length) {
+        const maxScore = Math.max(...scoredSubmitted.map(r => r.percent));
+        winners = scoredSubmitted.filter(r => r.percent === maxScore);
+      }
+      const roundName = stats.roundNames.get(selectedRound) || getRoundName(selectedRound);
+
+      const winnerListHtml = winners.map(w => {
+        const title = w.story_title && cleanAuthorName(w.story_title) !== cleanAuthorName(w.author)
+          ? ` <span class="meta">— «${esc(w.story_title)}»</span>`
+          : '';
+        return `<div class="winner-name" style="font-size:22px;font-weight:1000;margin-top:8px">🏆 ${esc(w.author)}${title}</div>`;
+      }).join('');
+      $('roundWinnerCard').innerHTML = winners.length ? `
+        <div class="winner-fireworks"></div>
+        <div class="label">${winners.length > 1 ? 'победители' : 'победитель'} раунда ${selectedRound}</div>
+        <div class="big ${winners.length === 1 ? 'winner-name' : ''}">${winners.length > 1 ? 'Победителей: ' + winners.length : '🏆 ' + esc(winners[0].author)}</div>
+        <div class="meta">${esc(roundName)}${winners.length === 1 && winners[0].story_title && cleanAuthorName(winners[0].story_title) !== cleanAuthorName(winners[0].author) ? '<br>«'+esc(winners[0].story_title)+'»' : ''}</div>
+        ${winners.length > 1 ? `<div style="margin-top:12px">${winnerListHtml}</div>` : ''}
+      ` : `<div class="empty">Победитель в данный момент не выбран. Пожалуйста, подождите.</div>`;
+
+      $('roundSummaryCard').innerHTML = `
+        <div class="label">сводка раунда</div>
+        <div class="big">${esc(roundName)}</div>
+        <div class="meta">Сдано работ: <b>${submitted.length}</b><br>Участников: <b>${list.length || stats.authors.length}</b></div>
+        <div class="pill-row"><span class="pill blue">раунд ${selectedRound}</span>${winners.length ? `<span class="pill green">победителей: ${winners.length}</span>` : ''}</div>
+      `;
+
+      $('roundTable').innerHTML = submitted.length ? tableHtml(['Победа','Автор','Рассказ','Статус'], list.map(r => [
+        r.win ? '<span class="trophy">🏆</span>' : '<span class="no-trophy">—</span>',
+        r.win ? `<span class="winner-name"><b>${esc(r.author)}</b></span>` : esc(r.author),
+        esc(r.story_title || '—'),
+        r.submitted ? (r.win ? '<span class="pill green">победил</span>' : '<span class="pill blue">участник</span>') : '<span class="pill red">не участвовал</span>'
+      ])) : tableHtml(['Автор','Кол-во рассказов','Кол-во побед','Голосов всего','% побед'], stats.byAuthor.map(a => [
+        esc(a.author), `<span class="num">${a.stories}</span>`, `<span class="num">${a.wins}</span>`, `<span class="num">${a.totalVotes || (a.best ? fmtPct(a.best.percent) : '—')}</span>`, `<span class="num">${fmtPct(a.winRate)}</span>`
+      ]));
+    }
+
+    function topTies(list, valueFn) {
+      if (!list || !list.length) return [];
+      const top = valueFn(list[0]);
+      return list.filter(x => valueFn(x) === top);
+    }
+
+    function namesLine(items) {
+      return items.map(x => esc(x.author)).join(' • ');
+    }
+
+    function renderLeaders() {
+      const winLeaders = topTies(stats.winsRank, a => a.wins);
+      const voteSource = stats.voteRank.length ? stats.voteRank : stats.maxRank;
+      const voteLeaders = topTies(voteSource, a => stats.voteRank.length ? a.totalVotes : (a.best?.percent || 0));
+      const effLeaders = stats.winnerRounds.length ? topTies(stats.effRank, a => a.winRate) : [];
+
+      $('winsLeader').innerHTML = winLeaders.length ? `
+        <div class="label">${winLeaders.length > 1 ? 'лидеры' : 'лидер'} по количеству побед</div>
+        <div class="big winner-name">${namesLine(winLeaders)}</div>
+        <div class="metric">${winLeaders[0].wins}</div>
+        <div class="meta">Побед у каждого: ${winLeaders[0].wins}<br>Участников с этим результатом: ${winLeaders.length}</div>` : `<div class="empty">Нет данных.</div>`;
+
+      $('maxPercentLeader').innerHTML = voteLeaders.length ? `
+        <div class="label">${voteLeaders.length > 1 ? 'лидеры' : 'лидер'} по голосам за баттл</div>
+        <div class="big winner-name">${namesLine(voteLeaders)}</div>
+        <div class="metric">${stats.voteRank.length ? voteLeaders[0].totalVotes : fmtPct(voteLeaders[0].best?.percent || 0)}</div>
+        <div class="meta">${stats.voteRank.length ? 'Общее число голосов у каждого' : 'Лучший процент, если общее число голосов не заполнено'}<br>Участников с этим результатом: ${voteLeaders.length}</div>` : `<div class="empty">Нет данных.</div>`;
+
+      $('effLeader').innerHTML = effLeaders.length ? `
+        <div class="label">${effLeaders.length > 1 ? 'лидеры' : 'лидер'} по эффективности</div>
+        <div class="big winner-name">${namesLine(effLeaders)}</div>
+        <div class="metric">${fmtPct(effLeaders[0].winRate)}</div>
+        <div class="meta">Побед к числу рассказов<br><span style="color:#9fb0c0">Учитываются только раунды, где уже выбран победитель.</span></div>` : `<div class="empty">Пока нет авторов с 2+ рассказами.</div>`;
+
+      $('winsTable').innerHTML = tableHtml(['#','Автор','Побед','Рассказов','Голосов всего'], stats.winsRank.map((a,i)=>[
+        i+1, esc(a.author), `<span class="num">${a.wins}</span>`, `<span class="num">${a.stories}</span>`, `<span class="num">${a.totalVotes || '—'}</span>`
+      ]));
+      $('effTable').innerHTML = tableHtml(['#','Автор','% побед','Побед','Учтённых рассказов'], stats.effRank.map((a,i)=>[
+        i+1, esc(a.author), `<span class="num">${fmtPct(a.winRate)}</span>`, `<span class="num">${a.effectiveWins}</span>`, `<span class="num">${a.effectiveStories}</span>`
+      ]));
+    }
+
+    function hashName(name) {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
+      return Math.abs(h);
+    }
+
+    function figureType(name) {
+      const n = name.toLowerCase();
+      if (n.includes('афё') || n.includes('афер') || n.includes('афер')) return { cls: 'criminal', prop: '🕶️' };
+      if (n.includes('одуван')) return { cls: 'space', prop: '🚀' };
+      if (n.includes('ворон')) return { cls: 'warrior bird', prop: '⚔️' };
+      if (n.includes('козинак')) return { cls: 'faith', prop: '📿' };
+      if (n.includes('козодой')) return { cls: 'diver', prop: '🤿' };
+      if (n.includes('кольц')) return { cls: 'chemist', prop: '⚗️' };
+      if (n.includes('константин') || n.includes('недов')) return { cls: 'biologist', prop: '🧬' };
+      if (n.includes('кухл')) return { cls: 'scientist', prop: '📓' };
+      if (n.includes('нанай')) return { cls: '', prop: '🥯' };
+      if (n.includes('спарк')) return { cls: 'old scientist', prop: '🎓' };
+      if (n.includes('шиз')) return { cls: 'gopnik', prop: '🧢' };
+      if (n.includes('кот')) return { cls: 'cat', prop: '🐾' };
+      if (n.includes('пух') || n.includes('винни')) return { cls: 'bear', prop: '🍯' };
+      if (n.includes('птиц')) return { cls: 'bird', prop: '羽' };
+      if (n.includes('кисл')) return { cls: '', prop: '🍋' };
+      if (n.includes('карас')) return { cls: '', prop: '🐟' };
+      if (n.includes('архив')) return { cls: '', prop: '📁' };
+      return { cls: '', prop: ['✒️','🧪','📄','🔍','⚙️','🗝️'][hashName(name) % 6] };
+    }
+
+    function figureHtml(a, fallen=false) {
+      const h = hashName(a.author);
+      const palette = [
+        ['#52b9ff', '#173f68'], ['#f06d35', '#6e2617'], ['#e5bb67', '#6e4a17'],
+        ['#9c7bff', '#372064'], ['#58d18b', '#17683c'], ['#e9618f', '#6d1939']
+      ][h % 6];
+      const type = figureType(a.author);
+      const fall = fallen ? `${(h % 17) - 8}deg` : '0deg';
+      const figfall = fallen ? `${20 + (h % 42)}deg` : '0deg';
+      return `
+        <div class="figure-card ${fallen ? 'fallen' : 'on-mountain'}" style="--c1:${palette[0]};--c2:${palette[1]};--fall:${fall};--figfall:${figfall}" title="${esc(a.author)}">
+          <div class="figure ${type.cls} ${fallen ? 'fallen-fig' : ''}">
+            <span class="head"></span><span class="body"></span><span class="arm-l"></span><span class="arm-r"></span><span class="leg-l"></span><span class="leg-r"></span>
+            ${type.prop ? `<span class="prop">${type.prop}</span>` : ''}
+          </div>
+          <div class="fig-text">
+            <div class="fig-name">${esc(a.author)}</div>
+            <div class="fig-stat">${a.wins} побед • ${a.stories} расск.</div>
+          </div>
+        </div>`;
+    }
+
+    function renderKing() {
+      $('roundsCount').textContent = stats.countedRounds.length || '—';
+      const topBox = $('kingTopFigures');
+      const fallenBox = $('kingFallenFigures');
+      const note = $('mountainNote');
+
+      const kingSet = new Set(stats.king.map(a => a.author));
+      const allActive = stats.byAuthor.filter(a => a.stories > 0 || a.best || authorSummaries.has(a.author));
+      const fallen = allActive.filter(a => !kingSet.has(a.author));
+
+      topBox.innerHTML = stats.king.length
+        ? stats.king.map(a => figureHtml(a, false)).join('')
+        : `<div class="empty">На вершине пока никого нет. Поставь «+» или «да» в колонке «не пропустил ни одного раунда», чтобы участник поднялся на гору.</div>`;
+
+      fallenBox.innerHTML = fallen.length
+        ? fallen.map(a => figureHtml(a, true)).join('')
+        : `<div class="empty">Пока никто не сорвался. Все отмеченные активные участники держатся на вершине.</div>`;
+
+      note.innerHTML = stats.king.length
+        ? `На вершине: <b>${stats.king.length}</b>. Сорвались: <b>${fallen.length}</b>. Если участник пропускает хотя бы один раунд, убери отметку из колонки «не пропустил ни одного раунда» — и он окажется у подножия.`
+        : `Гора строится по колонке «не пропустил ни одного раунда». Отметки: <b>+</b>, <b>да</b>, <b>yes</b>. Остальные участники считаются сорвавшимися.`;
+    }
+
+    function renderAuthors() {
+      const q = $('authorSearch').value.trim().toLowerCase();
+      const filtered = stats.authors.filter(a => a.toLowerCase().includes(q));
+      $('authorList').innerHTML = filtered.map(a => `<button class="author-btn ${a===selectedAuthor?'active':''}" data-author="${esc(a)}">${esc(a)}</button>`).join('') || `<div class="empty">Никого не найдено.</div>`;
+      $('authorList').querySelectorAll('button').forEach(b => b.onclick = () => { selectedAuthor = b.dataset.author; renderAuthors(); renderProfile(); });
+    }
+
+    function renderProfile() {
+      const a = stats.byAuthor.find(x => x.author === selectedAuthor);
+      const box = $('profileCard');
+      if (!a) { box.innerHTML = `<div class="empty">Выберите автора.</div>`; return; }
+      const onHill = stats.king.some(k => k.author === a.author);
+      const best = a.best;
+      const profileRounds = stats.countedRounds && stats.countedRounds.length ? stats.countedRounds : [];
+      const timeline = profileRounds.length ? profileRounds.map(round => {
+        const r = a.all.find(x => x.round === round);
+        if (!r || !r.submitted) return `<div class="timeline-item miss"><div class="round-mark">Раунд ${round}</div><div>${getRoundName(round)}</div><span class="pill red">не участвовал</span></div>`;
+        return `<div class="timeline-item"><div class="round-mark">Раунд ${round}</div><div><b>${esc(r.round_name)}</b><br><span class="meta">${r.story_title ? '«'+esc(r.story_title)+'»' : 'работа сдана'}</span></div><span class="pill ${r.win?'green':'blue'}">${r.win?'🏆 победил':'участник'}</span></div>`;
+      }).join('') : `<div class="empty">Пока нет открытых раундов с данными.</div>`;
+      box.innerHTML = `
+        <article class="card ${onHill?'gold':'blue'}">
+          <div class="label">личное дело</div>
+          <div class="big">${esc(a.author)}</div>
+          <div class="pill-row"><span class="pill ${onHill?'gold':'blue'}">${onHill?'царь горы':'наблюдать'}</span><span class="pill">рассказов: ${a.stories}</span><span class="pill green">побед: ${a.wins}</span></div>
+          <div class="grid cols-3" style="margin-top:16px">
+            <div><div class="label">голосов всего</div><div class="metric" style="font-size:38px">${a.totalVotes}</div></div>
+            <div><div class="label">% побед</div><div class="metric" style="font-size:38px">${fmtPct(a.winRate)}</div></div>
+            <div><div class="label">побед</div><div class="metric" style="font-size:38px">${a.wins}</div></div>
+          </div>
+        </article>
+        <div style="height:14px"></div>
+        <div class="timeline">${timeline}</div>
+      `;
+    }
+
+    function tableHtml(headers, data) {
+      return `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${data.map(row=>`<tr>${row.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    }
+
+    let autoRefreshTimer = null;
+
+    function setStatus(text, type='') {
+      const el = $('loadStatus');
+      if (!el) return;
+      el.className = 'status-line' + (type ? ' ' + type : '');
+      el.innerHTML = text;
+    }
+
+    function googleSheetToCsvUrl(inputUrl) {
+      const original = String(inputUrl || '').trim();
+      if (!original) return '';
+
+      // Уже готовая CSV-ссылка.
+      if (/output=csv|format=csv|tqx=out:csv/i.test(original)) {
+        return addCacheBust(original);
+      }
+
+      // Опубликованная ссылка вида /spreadsheets/d/e/.../pubhtml?gid=...
+      const publishedMatch = original.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/([^/]+)\/pubhtml([^#]*)?/i);
+      if (publishedMatch) {
+        const query = publishedMatch[2] || '';
+        const gid = (original.match(/[?&]gid=(\d+)/) || [])[1] || '0';
+        return addCacheBust(`https://docs.google.com/spreadsheets/d/e/${publishedMatch[1]}/pub?gid=${gid}&single=true&output=csv`);
+      }
+
+      // Обычная ссылка вида /spreadsheets/d/{id}/edit?gid=...
+      const idMatch = original.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (idMatch) {
+        const id = idMatch[1];
+        const gid = (original.match(/[?&#&]gid=(\d+)/) || [])[1];
+        const exportUrl = gid
+          ? `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`
+          : `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
+        return addCacheBust(exportUrl);
+      }
+
+      // На всякий случай: если это локальный data.csv или другой URL.
+      return addCacheBust(original);
+    }
+    function extractSpreadsheetId(inputUrl) {
+      const m = String(inputUrl || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      return m ? m[1] : null;
+    }
+
+    function sheetCsvUrlByName(spreadsheetId, sheetName) {
+      return addCacheBust(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`);
+    }
+
+    async function loadRoundStories(sourceUrl) {
+      roundStories = new Map();
+      const spreadsheetId = extractSpreadsheetId(sourceUrl);
+      if (!spreadsheetId) return;
+      const tasks = [];
+      for (let round = 1; round <= 10; round++) {
+        tasks.push((async () => {
+          const sheetName = `${round} раунд`;
+          try {
+            const res = await fetch(sheetCsvUrlByName(spreadsheetId, sheetName), { cache: 'no-store' });
+            if (!res.ok) return;
+            const text = await res.text();
+            const grid = parseDelimited(text, detectDelimiter(text));
+            if (grid.length < 2) return;
+            const headers = grid[0].map(h => String(h).trim().toLowerCase());
+            const nameCol = headers.findIndex(h => h.includes('имя') || h.includes('автор'));
+            const titleCol = headers.findIndex(h => h.includes('название') || h.includes('рассказ'));
+            if (nameCol < 0 || titleCol < 0) return;
+            const map = new Map();
+            for (const row of grid.slice(1)) {
+              const author = cleanAuthorName(row[nameCol] || '');
+              const title = String(row[titleCol] || '').trim();
+              if (author) map.set(author, title);
+            }
+            if (map.size) roundStories.set(round, map);
+          } catch (e) {
+            console.warn('Не удалось загрузить лист рассказов', sheetName, e);
+          }
+        })());
+      }
+      await Promise.all(tasks);
+      applyRoundStories();
+    }
+
+    function applyRoundStories() {
+      if (!roundStories.size || !rows.length) return;
+      for (const r of rows) {
+        const map = roundStories.get(r.round);
+        if (!map || !map.has(r.author)) continue;
+        const title = map.get(r.author) || '';
+        if (title) {
+          r.story_title = title;
+          r.submitted = true;
+        } else if (!r.rawRoundValue && !r.win) {
+          r.story_title = '';
+          r.submitted = false;
+          r.hasRoundScore = false;
+        }
+      }
+    }
+
+
+    function addCacheBust(url) {
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}_=${Date.now()}`;
+    }
+
+    async function loadFromUrl(url, {silent=false} = {}) {
+      const sourceUrl = String(url || '').trim();
+      if (!sourceUrl) throw new Error('Ссылка на Google-таблицу не указана.');
+      const csvUrl = googleSheetToCsvUrl(sourceUrl);
+
+      if (!silent) setStatus('Загружаю данные из Google-таблицы...', '');
+
+      const res = await fetch(csvUrl, { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('Не удалось загрузить CSV: HTTP ' + res.status + '. Проверь, что таблица опубликована или доступна по ссылке.');
+      }
+
+      const text = await res.text();
+      if (/<!doctype html|<html/i.test(text) && !text.includes(';') && !text.includes(',')) {
+        throw new Error('Google вернул HTML-страницу вместо CSV. Обычно это значит, что таблица закрыта. Открой доступ «Любой, у кого есть ссылка» или опубликуй лист как CSV.');
+      }
+
+      rows = parseCsv(text);
+      await loadRoundStories(sourceUrl);
+      if (!rows.length && !authorSummaries.size) {
+        throw new Error('CSV загружен, но строки не распознаны. Проверь, что выбран правильный лист и структура таблицы совпадает с твоим шаблоном.');
+      }
+
+      localStorage.setItem('niiFigaDataUrl', sourceUrl);
+      localStorage.setItem('niiFigaAutoRefresh', $('autoRefresh')?.checked ? '1' : '0');
+      renderAll();
+
+      const now = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      setStatus(`Данные загружены из Google-таблицы. Последнее обновление: <b>${now}</b>.`, 'ok');
+    }
+
+    async function loadCurrentUrl({silent=false} = {}) {
+      const url = $('dataUrl').value.trim();
+      if (!url) return;
+      await loadFromUrl(url, {silent});
+    }
+
+    function setupAutoRefresh() {
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+      const enabled = !!$('autoRefresh')?.checked;
+      localStorage.setItem('niiFigaAutoRefresh', enabled ? '1' : '0');
+      if (!enabled) return;
+      autoRefreshTimer = setInterval(async () => {
+        try { await loadCurrentUrl({silent:true}); }
+        catch(e) { setStatus('Ошибка автообновления: ' + esc(e.message), 'err'); }
+      }, 60000);
+    }
+
+    $('sourceToggle').onclick = () => $('sourceModal').classList.add('open');
+    $('sourceClose').onclick = () => $('sourceModal').classList.remove('open');
+    $('sourceModal').onclick = (e) => { if (e.target === $('sourceModal')) $('sourceModal').classList.remove('open'); };
+
+    $('loadUrl').onclick = async () => {
+      const url = $('dataUrl').value.trim();
+      if (!url) return;
+      $('loadUrl').textContent = 'Загрузка...';
+      try { await loadFromUrl(url); setupAutoRefresh(); $('sourceModal').classList.remove('open'); }
+      catch (e) { setStatus(esc(e.message), 'err'); alert(e.message); }
+      finally { $('loadUrl').textContent = 'Подключить'; }
+    };
+
+    $('refreshData').onclick = async () => {
+      $('refreshData').textContent = 'Обновляю...';
+      try { await loadCurrentUrl(); }
+      catch(e) { setStatus(esc(e.message), 'err'); alert(e.message); }
+      finally { $('refreshData').textContent = 'Обновить'; }
+    };
+
+    $('resetData').onclick = () => {
+      localStorage.removeItem('niiFigaDataUrl');
+      localStorage.removeItem('niiFigaAutoRefresh');
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      $('autoRefresh').checked = false;
+      $('dataUrl').value = '';
+      rows = parseCsv(sampleCsv);
+      renderAll();
+      setStatus('Включены демо-данные. Вставь ссылку на Google-таблицу, чтобы подключить свою статистику.', '');
+    };
+
+    $('fileInput').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          rows = parseCsv(String(reader.result));
+          roundStories = new Map();
+          if (!rows.length && !authorSummaries.size) throw new Error('Файл не распознан.');
+          renderAll();
+          setStatus('CSV-файл загружен вручную. Google-таблица временно не используется.', 'ok');
+        } catch (err) { setStatus(esc(err.message), 'err'); alert(err.message); }
+      };
+      reader.readAsText(file, 'utf-8');
+    };
+
+    $('authorSearch').oninput = renderAuthors;
+    $('autoRefresh').onchange = setupAutoRefresh;
+
+    (async function init(){
+      const saved = localStorage.getItem('niiFigaDataUrl') || DEFAULT_GOOGLE_SHEET_URL;
+      const auto = localStorage.getItem('niiFigaAutoRefresh') === '1';
+      $('dataUrl').value = saved;
+      $('autoRefresh').checked = auto;
+      if (saved) {
+        try { await loadFromUrl(saved, {silent:true}); setupAutoRefresh(); return; }
+        catch (e) { console.warn(e); setStatus('Не удалось автоматически загрузить Google-таблицу: ' + esc(e.message), 'err'); }
+      }
+      rows = parseCsv(sampleCsv);
+      renderAll();
+      setStatus('Сейчас показаны демо-данные. Вставь ссылку на Google-таблицу и нажми «Подключить».', '');
+    })();
+  </script>
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+  <script>
+    (function(){
+      try {
+        if (window.vkBridge) {
+          vkBridge.send('VKWebAppInit');
+          vkBridge.send('VKWebAppSetViewSettings', { status_bar_style: 'light', action_bar_color: '#080b10' }).catch(function(){});
+        }
+      } catch(e) { console.warn('VK Bridge init error', e); }
+    })();
+  </script>
+
+</body>
+</html>
