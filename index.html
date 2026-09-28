@@ -3,9 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>НИИ ФИГА — статистика баттла</title>
-  <meta name="theme-color" content="#080b10" />
-  <meta name="color-scheme" content="dark" />
+  <title>НИИ ФИГА — под грифом «Секретно» | Статистика баттла</title>
   <style>
     :root {
       --bg: #080b10;
@@ -336,6 +334,29 @@
     .trophy { display:inline-grid; place-items:center; width:42px; height:42px; border-radius:14px; background:linear-gradient(135deg,#ffe28f,#ad741d); color:#1d1207; font-size:23px; box-shadow:0 0 18px rgba(229,187,103,.25); }
     .no-trophy { display:inline-grid; place-items:center; width:42px; height:42px; color:#5f6b76; }
 
+    .like-btn {
+      min-width: 86px;
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 16px;
+      background: rgba(255,255,255,.08);
+      color: #e8f1f8;
+      font-weight: 1000;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .like-btn:hover { transform: translateY(-1px); border-color: rgba(240,109,53,.38); }
+    .like-btn.liked { background: rgba(240,109,53,.18); border-color: rgba(240,109,53,.55); color: #ffd2c1; }
+    .like-btn:disabled { opacity: .55; cursor: not-allowed; transform:none; }
+    .like-heart { font-size: 21px; line-height: 1; }
+    .like-count { font-variant-numeric: tabular-nums; min-width: 18px; text-align: left; }
+
     .table-wrap { overflow: auto; border-radius: 20px; border: 1px solid rgba(255,255,255,.12); }
     table { width: 100%; border-collapse: collapse; min-width: 760px; background: rgba(0,0,0,.18); }
     th, td { padding: 13px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: middle; }
@@ -582,6 +603,10 @@
           <button id="resetData" class="btn ghost">Демо</button>
         </div>
         <label class="checkline"><input id="autoRefresh" type="checkbox" /> Автообновление раз в 60 сек.</label>
+        <div class="control-line" style="margin-top:10px">
+          <input id="likesApiUrl" class="field" placeholder="URL веб-приложения Google Apps Script для лайков" />
+          <button id="saveLikesApi" class="btn ghost" type="button">Сохранить лайки API</button>
+        </div>
         <div id="loadStatus" class="status-line">Можно вставить обычную ссылку вида <code>docs.google.com/spreadsheets/d/.../edit?gid=...</code>. Сайт сам превратит её в CSV.</div>
       </div>
       <div class="control-card">
@@ -715,6 +740,7 @@
 15. Шиз;1;;15,38;0,0%;;;;;;;;;;;;;15. Шиз`;
 
     const DEFAULT_GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1dnNX9N49fKJmTLf_GrxlJYEs6RJPPvi_DOXi-197nRU/edit?usp=sharing';
+    const DEFAULT_LIKES_API_URL = '';
 
     let rows = [];
     let authorSummaries = new Map();
@@ -723,6 +749,7 @@
     let stats = null;
     let selectedRound = null;
     let selectedAuthor = null;
+    let likesCache = {};
 
     const $ = (id) => document.getElementById(id);
 
@@ -946,6 +973,107 @@
       renderRounds(); renderLeaders(); renderKing(); renderAuthors(); renderProfile();
     }
 
+    function getLikesApiUrl() {
+      return (localStorage.getItem('niiFigaLikesApiUrl') || DEFAULT_LIKES_API_URL || '').trim();
+    }
+
+    function getVkLaunchParams() {
+      return window.location.search ? window.location.search.slice(1) : '';
+    }
+
+    function jsonp(url) {
+      return new Promise((resolve, reject) => {
+        const cb = 'niiFigaJsonp_' + Math.random().toString(36).slice(2);
+        const script = document.createElement('script');
+        const sep = url.includes('?') ? '&' : '?';
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error('Сервер лайков не ответил'));
+        }, 15000);
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[cb];
+          script.remove();
+        }
+        window[cb] = (data) => { cleanup(); resolve(data); };
+        script.onerror = () => { cleanup(); reject(new Error('Не удалось подключиться к серверу лайков')); };
+        script.src = url + sep + 'callback=' + encodeURIComponent(cb) + '&_=' + Date.now();
+        document.body.appendChild(script);
+      });
+    }
+
+    function likeButtonHtml(author, round) {
+      const api = getLikesApiUrl();
+      const data = likesCache[round] || { counts: {}, userLiked: {} };
+      const count = data.counts?.[author] || 0;
+      const liked = !!data.userLiked?.[author];
+      const disabled = api ? '' : 'disabled';
+      const title = api ? 'Поставить или снять лайк' : 'Лайки пока не подключены';
+      return `<button class="like-btn ${liked ? 'liked' : ''}" ${disabled} data-author="${esc(author)}" data-round="${round}" title="${title}"><span class="like-heart">${liked ? '❤️' : '🤍'}</span><span class="like-count">${count}</span></button>`;
+    }
+
+    async function loadLikesForRound(round) {
+      const api = getLikesApiUrl();
+      if (!api || !round) return;
+      try {
+        const url = api
+          + '?action=get_likes'
+          + '&round=' + encodeURIComponent(round)
+          + '&launch=' + encodeURIComponent(getVkLaunchParams());
+        const data = await jsonp(url);
+        if (data && data.ok) {
+          likesCache[round] = { counts: data.counts || {}, userLiked: data.userLiked || {} };
+          updateLikeButtons(round);
+        }
+      } catch (e) {
+        console.warn('Не удалось загрузить лайки', e);
+      }
+    }
+
+    function updateLikeButtons(round) {
+      const data = likesCache[round] || { counts: {}, userLiked: {} };
+      document.querySelectorAll(`.like-btn[data-round="${round}"]`).forEach(btn => {
+        const author = btn.dataset.author;
+        const count = data.counts?.[author] || 0;
+        const liked = !!data.userLiked?.[author];
+        btn.classList.toggle('liked', liked);
+        btn.querySelector('.like-heart').textContent = liked ? '❤️' : '🤍';
+        btn.querySelector('.like-count').textContent = count;
+      });
+    }
+
+    function bindLikeButtons() {
+      document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const api = getLikesApiUrl();
+          if (!api) { alert('Лайки ещё не подключены.'); return; }
+          const launch = getVkLaunchParams();
+          if (!launch.includes('vk_user_id=')) {
+            alert('Лайки доступны внутри VK Mini App.');
+            return;
+          }
+          const round = Number(btn.dataset.round);
+          const author = btn.dataset.author;
+          btn.disabled = true;
+          try {
+            const url = api
+              + '?action=toggle_like'
+              + '&round=' + encodeURIComponent(round)
+              + '&author=' + encodeURIComponent(author)
+              + '&launch=' + encodeURIComponent(launch);
+            const data = await jsonp(url);
+            if (!data || !data.ok) throw new Error(data?.error || 'Не удалось поставить лайк');
+            likesCache[round] = { counts: data.counts || {}, userLiked: data.userLiked || {} };
+            updateLikeButtons(round);
+          } catch (e) {
+            alert(e.message);
+          } finally {
+            btn.disabled = false;
+          }
+        };
+      });
+    }
+
     function shouldShowInRound(author, round) {
       const authorRows = rows.filter(r => r.author === author && r.round <= round).sort((a,b)=>a.round-b.round);
       const current = authorRows.find(r => r.round === round);
@@ -1011,7 +1139,8 @@
         <div class="pill-row"><span class="pill blue">раунд ${selectedRound}</span>${winners.length ? `<span class="pill green">победителей: ${winners.length}</span>` : ''}</div>
       `;
 
-      $('roundTable').innerHTML = submitted.length ? tableHtml(['Победа','Автор','Рассказ','Статус'], list.map(r => [
+      $('roundTable').innerHTML = submitted.length ? tableHtml(['Лайки','Победа','Автор','Рассказ','Статус'], list.map(r => [
+        likeButtonHtml(r.author, selectedRound),
         r.win ? '<span class="trophy">🏆</span>' : '<span class="no-trophy">—</span>',
         r.win ? `<span class="winner-name"><b>${esc(r.author)}</b></span>` : esc(r.author),
         esc(r.story_title || '—'),
@@ -1019,6 +1148,8 @@
       ])) : tableHtml(['Автор','Кол-во рассказов','Кол-во побед','Голосов всего','% побед'], stats.byAuthor.map(a => [
         esc(a.author), `<span class="num">${a.stories}</span>`, `<span class="num">${a.wins}</span>`, `<span class="num">${a.totalVotes || (a.best ? fmtPct(a.best.percent) : '—')}</span>`, `<span class="num">${fmtPct(a.winRate)}</span>`
       ]));
+      bindLikeButtons();
+      loadLikesForRound(selectedRound);
     }
 
     function topTies(list, valueFn) {
@@ -1330,6 +1461,14 @@
       }, 60000);
     }
 
+    $('likesApiUrl').value = getLikesApiUrl();
+    $('saveLikesApi').onclick = () => {
+      localStorage.setItem('niiFigaLikesApiUrl', $('likesApiUrl').value.trim());
+      likesCache = {};
+      renderRounds();
+      setStatus('URL сервера лайков сохранён.', 'ok');
+    };
+
     $('sourceToggle').onclick = () => $('sourceModal').classList.add('open');
     $('sourceClose').onclick = () => $('sourceModal').classList.remove('open');
     $('sourceModal').onclick = (e) => { if (e.target === $('sourceModal')) $('sourceModal').classList.remove('open'); };
@@ -1406,5 +1545,5 @@
     })();
   </script>
 
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a42451c9ef38a8bc',t:'MTc5MDYxNDk4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
