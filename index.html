@@ -756,6 +756,9 @@
     const LIKES_CACHE_KEY = 'niiFigaLikesCache';
     let likesInflight = {};
     let likesLocks = {};
+    let likesSpreadsheetId = null;
+    const LIKES_SHEET_GID = '1298197380'; // gid вкладки «Лайки» в таблице статистики
+    const likesFreshUntil = {};
 
     const $ = (id) => document.getElementById(id);
 
@@ -1066,15 +1069,15 @@
       const box = $('likesLeader');
       if (!box) return;
       const api = getLikesApiUrl();
-      if (!api) {
-        box.innerHTML = `<div class="label">лидер по лайкам</div><div class="empty">Лайки пока не подключены. Укажи URL сервера лайков в настройках.</div>`;
-        return;
-      }
       const totals = likesTotals();
       const list = Object.keys(totals).map(author => ({ author, likes: totals[author] }))
         .filter(x => x.likes > 0)
         .sort((a,b) => b.likes - a.likes || a.author.localeCompare(b.author, 'ru'));
       const leaders = topTies(list, x => x.likes);
+      if (!leaders.length && !api) {
+        box.innerHTML = `<div class="label">лидер по лайкам</div><div class="empty">Лайки пока не подключены. Укажи URL сервера лайков в настройках.</div>`;
+        return;
+      }
       box.innerHTML = leaders.length ? `
         <div class="label">${leaders.length > 1 ? 'лидеры' : 'лидер'} по лайкам</div>
         <div class="big winner-name">${namesLine(leaders)}</div>
@@ -1113,8 +1116,63 @@
       return p;
     }
 
+    function getVkUserId() {
+      const m = getVkLaunchParams().match(/(?:^|&)vk_user_id=(\d+)/);
+      return m ? m[1] : '';
+    }
+
+    // Лайки читаются напрямую из вкладки «Лайки» той же Google-таблицы —
+    // цифры видны всегда, даже если сервер Apps Script не отвечает.
+    async function loadLikesFromSheet() {
+      const id = likesSpreadsheetId || extractSpreadsheetId(DEFAULT_GOOGLE_SHEET_URL);
+      if (!id) return false;
+      const urls = [
+        addCacheBust(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${LIKES_SHEET_GID}`),
+        sheetCsvUrlByName(id, 'Лайки')
+      ];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) continue;
+          const text = await res.text();
+          if (/<!doctype html|<html/i.test(text)) continue;
+          const grid = parseDelimited(text, detectDelimiter(text));
+          if (grid.length < 2) continue;
+          const headers = grid[0].map(h => String(h).trim().toLowerCase());
+          const roundCol = headers.findIndex(h => h === 'round' || h.includes('раунд'));
+          const authorCol = headers.findIndex(h => h === 'author' || h.includes('автор') || h.includes('имя'));
+          const userCol = headers.findIndex(h => h.includes('vk_user') || h.includes('user_id'));
+          if (roundCol < 0 || authorCol < 0) continue;
+          const myId = getVkUserId();
+          const merged = {};
+          for (const row of grid.slice(1)) {
+            const round = String(row[roundCol] ?? '').trim();
+            const author = cleanAuthorName(row[authorCol] || '');
+            const uid = userCol >= 0 ? String(row[userCol] ?? '').trim() : '';
+            if (!round || !author) continue;
+            if (!merged[round]) merged[round] = { counts: {}, userLiked: {} };
+            merged[round].counts[author] = (merged[round].counts[author] || 0) + 1;
+            if (myId && uid === myId) merged[round].userLiked[author] = true;
+          }
+          Object.keys(merged).forEach(round => {
+            // Не затираем данные по раунду, где только что кликнули (окно 3 минуты).
+            if (likesFreshUntil[round] && Date.now() < likesFreshUntil[round]) return;
+            likesCache[round] = merged[round];
+          });
+          persistLikes();
+          Object.keys(merged).forEach(r => updateLikeButtons(Number(r)));
+          renderLikesLeader();
+          return true;
+        } catch (e) {
+          console.warn('Не удалось прочитать вкладку «Лайки»', e);
+        }
+      }
+      return false;
+    }
+
     function loadAllLikes() {
       renderLikesLeader();
+      loadLikesFromSheet();
       const api = getLikesApiUrl();
       if (!api) return;
       const roundSet = new Set();
@@ -1151,6 +1209,7 @@
           const round = Number(btn.dataset.round);
           const author = btn.dataset.author;
           btn.dataset.busy = '1';
+          likesFreshUntil[round] = Date.now() + 180000;
 
           // Оптимистичное обновление: мгновенный отклик без ожидания сервера.
           if (!likesCache[round]) likesCache[round] = { counts: {}, userLiked: {} };
@@ -1173,6 +1232,7 @@
             , 1));
             if (!resp || !resp.ok) throw new Error(resp?.error || 'Не удалось поставить лайк');
             likesCache[round] = { counts: resp.counts || {}, userLiked: resp.userLiked || {} };
+            likesFreshUntil[round] = Date.now() + 180000;
             persistLikes();
             updateLikeButtons(round);
             renderLikesLeader();
