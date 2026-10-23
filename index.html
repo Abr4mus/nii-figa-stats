@@ -265,6 +265,7 @@
     .checkline input { width: 18px; height: 18px; accent-color: var(--blue); }
 
     .grid { display: grid; gap: 18px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
@@ -310,6 +311,7 @@
     .card.blue { border-color: rgba(82,185,255,.28); box-shadow: inset 0 0 45px rgba(82,185,255,.08); }
     .card.rust { border-color: rgba(240,109,53,.3); box-shadow: inset 0 0 45px rgba(240,109,53,.08); }
     .card.gold { border-color: rgba(229,187,103,.35); box-shadow: inset 0 0 45px rgba(229,187,103,.08); }
+    .card.heart { border-color: rgba(233,97,143,.42); box-shadow: inset 0 0 45px rgba(233,97,143,.1); }
     .card.black { border-color: rgba(0,0,0,.7); background: radial-gradient(circle at 50% 45%, rgba(0,0,0,.98), rgba(26,8,8,.58) 52%, rgba(0,0,0,.3)), rgba(0,0,0,.55); }
     .card > * { position: relative; z-index: 1; }
     .label { color: #9fb0c0; font-size: 12px; letter-spacing: .11em; text-transform: uppercase; font-weight: 900; }
@@ -317,7 +319,7 @@
     .metric { color: var(--gold); font-size: clamp(36px, 4vw, 62px); font-weight: 1000; letter-spacing: -.06em; margin: 7px 0; }
     .meta { color: #b8c7d4; line-height: 1.5; }
     .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    .pill { padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.12); color: #d8e3ed; font-size: 12px; font-weight: 800; }
+    .pill { display: inline-flex; align-items: center; white-space: nowrap; padding: 7px 12px; border-radius: 999px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.12); color: #d8e3ed; font-size: 12px; font-weight: 800; }
     .pill.blue { color: #bde7ff; border-color: rgba(82,185,255,.28); background: rgba(82,185,255,.09); }
     .pill.rust { color: #ffc7ac; border-color: rgba(240,109,53,.3); background: rgba(240,109,53,.1); }
     .pill.gold { color: #ffdf95; border-color: rgba(229,187,103,.36); background: rgba(229,187,103,.1); }
@@ -559,7 +561,7 @@
     .footer { margin-top: 18px; color: #8392a3; text-align: center; font-size: 13px; }
 
     @media (max-width: 980px) {
-      .hero-inner, .grid.cols-3, .grid.cols-2, .profile-grid { grid-template-columns: 1fr; }
+      .hero-inner, .grid.cols-4, .grid.cols-3, .grid.cols-2, .profile-grid { grid-template-columns: 1fr; }
       .stamp { justify-self: start; width: 260px; }
       .section { padding: 18px; border-radius: 24px; }
     }
@@ -644,14 +646,15 @@
         <div>
           <p class="eyebrow">раздел 02</p>
           <h2>Лидеры баттла</h2>
-          <p class="subtext">Три главные номинации: победы, максимум голосов за баттл и процент побед.</p>
+          <p class="subtext">Четыре главные номинации: победы, голоса за баттл, процент побед и зрительские лайки.</p>
         </div>
       </div>
 
-      <div class="grid cols-3">
+      <div class="grid cols-4">
         <article class="card gold" id="winsLeader"></article>
         <article class="card rust" id="maxPercentLeader"></article>
         <article class="card blue" id="effLeader"></article>
+        <article class="card heart" id="likesLeader"></article>
       </div>
       <div style="height:18px"></div>
       <div class="grid">
@@ -660,7 +663,7 @@
           <div class="table-wrap"><table id="winsTable"></table></div>
         </div>
         <div>
-          <h3 class="label">Рейтинг по % побед</h3>
+          <h3 class="label">Рейтинг по % побед (авторы с 4+ рассказами)</h3>
           <div class="table-wrap"><table id="effTable"></table></div>
         </div>
       </div>
@@ -740,7 +743,7 @@
 15. Шиз;1;;15,38;0,0%;;;;;;;;;;;;;15. Шиз`;
 
     const DEFAULT_GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1dnNX9N49fKJmTLf_GrxlJYEs6RJPPvi_DOXi-197nRU/edit?usp=sharing';
-    const DEFAULT_LIKES_API_URL = 'https://script.google.com/macros/s/AKfycbztWWAzldGxdF86ILEoXP1FqHCVXnMeZuD7HCXV0o7awNp5L2a4Da-8UYv8xyKh0JUz/exec';
+    const DEFAULT_LIKES_API_URL = '';
 
     let rows = [];
     let authorSummaries = new Map();
@@ -750,6 +753,9 @@
     let selectedRound = null;
     let selectedAuthor = null;
     let likesCache = {};
+    const LIKES_CACHE_KEY = 'niiFigaLikesCache';
+    let likesInflight = {};
+    let likesLocks = {};
 
     const $ = (id) => document.getElementById(id);
 
@@ -957,7 +963,7 @@
       const winsRank = byAuthor.slice().sort((a,b)=>b.wins-a.wins || b.stories-a.stories || b.totalVotes-a.totalVotes);
       const maxRank = byAuthor.filter(a=>a.best).slice().sort((a,b)=>(b.best?.percent||0)-(a.best?.percent||0) || (b.best?.votes||0)-(a.best?.votes||0));
       const voteRank = byAuthor.filter(a=>a.totalVotes > 0).slice().sort((a,b)=>b.totalVotes-a.totalVotes || b.wins-a.wins || b.stories-a.stories);
-      const effRank = byAuthor.filter(a=>a.effectiveStories > 0).slice().sort((a,b)=>b.winRate-a.winRate || b.effectiveWins-a.effectiveWins || b.effectiveStories-a.effectiveStories || a.author.localeCompare(b.author,'ru'));
+      const effRank = byAuthor.filter(a=>a.effectiveStories > 0 && a.stories > 3).slice().sort((a,b)=>b.winRate-a.winRate || b.effectiveWins-a.effectiveWins || b.effectiveStories-a.effectiveStories || a.author.localeCompare(b.author,'ru'));
 
       const king = byAuthor.filter(a => countedRounds.length && countedRounds.every(round => a.all.some(r => r.round === round && r.submitted)));
 
@@ -970,7 +976,7 @@
       stats = computeStats(rows);
       if (!selectedRound || !stats.selectableRounds.includes(selectedRound)) selectedRound = stats.selectableRounds[0] || null;
       if (!selectedAuthor || !stats.authors.includes(selectedAuthor)) selectedAuthor = stats.authors[0] || null;
-      renderRounds(); renderLeaders(); renderKing(); renderAuthors(); renderProfile();
+      renderRounds(); renderLeaders(); renderKing(); renderAuthors(); renderProfile(); loadAllLikes();
     }
 
     function getLikesApiUrl() {
@@ -978,7 +984,9 @@
     }
 
     function getVkLaunchParams() {
-      return window.location.search ? window.location.search.slice(1) : '';
+      try {
+        return (window.location && window.location.search) ? window.location.search.slice(1) : '';
+      } catch (e) { return ''; }
     }
 
     function jsonp(url) {
@@ -988,8 +996,8 @@
         const sep = url.includes('?') ? '&' : '?';
         const timer = setTimeout(() => {
           cleanup();
-          reject(new Error('Сервер лайков не ответил'));
-        }, 15000);
+          reject(new Error('Сервер лайков не ответил (тайм-аут)'));
+        }, 8000);
         function cleanup() {
           clearTimeout(timer);
           delete window[cb];
@@ -1012,22 +1020,107 @@
       return `<button class="like-btn ${liked ? 'liked' : ''}" ${disabled} data-author="${esc(author)}" data-round="${round}" title="${title}"><span class="like-heart">${liked ? '❤️' : '🤍'}</span><span class="like-count">${count}</span></button>`;
     }
 
-    async function loadLikesForRound(round) {
-      const api = getLikesApiUrl();
-      if (!api || !round) return;
+    function persistLikes() {
+      try { localStorage.setItem(LIKES_CACHE_KEY, JSON.stringify(likesCache)); } catch (e) {}
+    }
+
+    function loadPersistedLikes() {
       try {
-        const url = api
-          + '?action=get_likes'
-          + '&round=' + encodeURIComponent(round)
-          + '&launch=' + encodeURIComponent(getVkLaunchParams());
-        const data = await jsonp(url);
-        if (data && data.ok) {
-          likesCache[round] = { counts: data.counts || {}, userLiked: data.userLiked || {} };
-          updateLikeButtons(round);
+        const raw = localStorage.getItem(LIKES_CACHE_KEY);
+        likesCache = raw ? (JSON.parse(raw) || {}) : {};
+      } catch (e) { likesCache = {}; }
+    }
+
+    function withLikesLock(round, fn) {
+      const prev = likesLocks[round] || Promise.resolve();
+      const run = prev.then(fn, fn);
+      likesLocks[round] = run.catch(() => {});
+      return run;
+    }
+
+    function requestJsonp(url, tries) {
+      tries = tries || 3;
+      return (async () => {
+        let lastErr = null;
+        for (let i = 0; i < tries; i++) {
+          try { return await jsonp(url); }
+          catch (e) {
+            lastErr = e;
+            if (i < tries - 1) await new Promise(r => setTimeout(r, 350 * (i + 1)));
+          }
         }
-      } catch (e) {
-        console.warn('Не удалось загрузить лайки', e);
+        throw lastErr;
+      })();
+    }
+
+    function likesTotals() {
+      const totals = {};
+      Object.keys(likesCache).forEach(k => {
+        const counts = (likesCache[k] && likesCache[k].counts) || {};
+        Object.keys(counts).forEach(a => { totals[a] = (totals[a] || 0) + (Number(counts[a]) || 0); });
+      });
+      return totals;
+    }
+
+    function renderLikesLeader() {
+      const box = $('likesLeader');
+      if (!box) return;
+      const api = getLikesApiUrl();
+      if (!api) {
+        box.innerHTML = `<div class="label">лидер по лайкам</div><div class="empty">Лайки пока не подключены. Укажи URL сервера лайков в настройках.</div>`;
+        return;
       }
+      const totals = likesTotals();
+      const list = Object.keys(totals).map(author => ({ author, likes: totals[author] }))
+        .filter(x => x.likes > 0)
+        .sort((a,b) => b.likes - a.likes || a.author.localeCompare(b.author, 'ru'));
+      const leaders = topTies(list, x => x.likes);
+      box.innerHTML = leaders.length ? `
+        <div class="label">${leaders.length > 1 ? 'лидеры' : 'лидер'} по лайкам</div>
+        <div class="big winner-name">${namesLine(leaders)}</div>
+        <div class="metric">❤️ ${leaders[0].likes}</div>
+        <div class="meta">Сумма лайков по всем раундам у каждого<br>Участников с этим результатом: ${leaders.length}</div>`
+        : `<div class="label">лидер по лайкам</div><div class="empty">Пока ни одного лайка. Сердечки появятся, как только читатели начнут голосовать.</div>`;
+    }
+
+    function loadLikesForRound(round) {
+      const api = getLikesApiUrl();
+      if (!api || !round) return Promise.resolve(false);
+      if (likesInflight[round]) return likesInflight[round];
+      const p = withLikesLock(round, async () => {
+        try {
+          const url = api
+            + '?action=get_likes'
+            + '&round=' + encodeURIComponent(round)
+            + '&launch=' + encodeURIComponent(getVkLaunchParams());
+          const data = await requestJsonp(url, 3);
+          if (data && data.ok) {
+            likesCache[round] = { counts: data.counts || {}, userLiked: data.userLiked || {} };
+            persistLikes();
+            updateLikeButtons(round);
+            renderLikesLeader();
+            return true;
+          }
+          return false;
+        } catch (e) {
+          console.warn('Не удалось загрузить лайки', e);
+          return false;
+        } finally {
+          delete likesInflight[round];
+        }
+      });
+      likesInflight[round] = p;
+      return p;
+    }
+
+    function loadAllLikes() {
+      renderLikesLeader();
+      const api = getLikesApiUrl();
+      if (!api) return;
+      const roundSet = new Set();
+      ((stats && stats.selectableRounds) || []).forEach(r => roundSet.add(r));
+      rows.forEach(r => { if (r.round) roundSet.add(r.round); });
+      [...roundSet].sort((a,b)=>a-b).forEach(r => loadLikesForRound(r));
     }
 
     function updateLikeButtons(round) {
@@ -1044,7 +1137,9 @@
 
     function bindLikeButtons() {
       document.querySelectorAll('.like-btn').forEach(btn => {
-        btn.onclick = async () => {
+        if (btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', async () => {
           const api = getLikesApiUrl();
           if (!api) { alert('Лайки ещё не подключены.'); return; }
           const launch = getVkLaunchParams();
@@ -1052,25 +1147,51 @@
             alert('Лайки доступны внутри VK Mini App.');
             return;
           }
+          if (btn.dataset.busy === '1') return;
           const round = Number(btn.dataset.round);
           const author = btn.dataset.author;
-          btn.disabled = true;
+          btn.dataset.busy = '1';
+
+          // Оптимистичное обновление: мгновенный отклик без ожидания сервера.
+          if (!likesCache[round]) likesCache[round] = { counts: {}, userLiked: {} };
+          const data = likesCache[round];
+          data.counts = data.counts || {};
+          data.userLiked = data.userLiked || {};
+          const wasLiked = !!data.userLiked[author];
+          const prevCount = Number(data.counts[author]) || 0;
+          data.userLiked[author] = !wasLiked;
+          data.counts[author] = Math.max(0, prevCount + (wasLiked ? -1 : 1));
+          updateLikeButtons(round);
+          renderLikesLeader();
+
           try {
-            const url = api
-              + '?action=toggle_like'
+            const resp = await withLikesLock(round, () => requestJsonp(
+              api + '?action=toggle_like'
               + '&round=' + encodeURIComponent(round)
               + '&author=' + encodeURIComponent(author)
-              + '&launch=' + encodeURIComponent(launch);
-            const data = await jsonp(url);
-            if (!data || !data.ok) throw new Error(data?.error || 'Не удалось поставить лайк');
-            likesCache[round] = { counts: data.counts || {}, userLiked: data.userLiked || {} };
+              + '&launch=' + encodeURIComponent(launch)
+            , 1));
+            if (!resp || !resp.ok) throw new Error(resp?.error || 'Не удалось поставить лайк');
+            likesCache[round] = { counts: resp.counts || {}, userLiked: resp.userLiked || {} };
+            persistLikes();
             updateLikeButtons(round);
+            renderLikesLeader();
           } catch (e) {
-            alert(e.message);
+            // Ответ мог потеряться — сверяемся с сервером; если и он молчит, возвращаем как было.
+            const synced = await loadLikesForRound(round);
+            if (!synced) {
+              likesCache[round].userLiked[author] = wasLiked;
+              likesCache[round].counts[author] = prevCount;
+            }
+            updateLikeButtons(round);
+            renderLikesLeader();
+            const msg = String(e && e.message ? e.message : e);
+            if (/VK Mini App|подпис|подключены/i.test(msg)) alert(msg);
+            else console.warn('Лайк не отправлен:', msg);
           } finally {
-            btn.disabled = false;
+            delete btn.dataset.busy;
           }
-        };
+        });
       });
     }
 
@@ -1124,12 +1245,15 @@
           : '';
         return `<div class="winner-name" style="font-size:22px;font-weight:1000;margin-top:8px">🏆 ${esc(w.author)}${title}</div>`;
       }).join('');
+      const singleTitle = winners.length === 1 && winners[0].story_title && cleanAuthorName(winners[0].story_title) !== cleanAuthorName(winners[0].author)
+        ? `<div class="winner-name" style="font-size:22px;font-weight:1000;margin-top:10px"><span class="meta" style="font-size:22px">— «${esc(winners[0].story_title)}»</span></div>`
+        : '';
       $('roundWinnerCard').innerHTML = winners.length ? `
         <div class="winner-fireworks"></div>
         <div class="label">${winners.length > 1 ? 'победители' : 'победитель'} раунда ${selectedRound}</div>
         <div class="big ${winners.length === 1 ? 'winner-name' : ''}">${winners.length > 1 ? 'Победителей: ' + winners.length : '🏆 ' + esc(winners[0].author)}</div>
-        <div class="meta">${esc(roundName)}${winners.length === 1 && winners[0].story_title && cleanAuthorName(winners[0].story_title) !== cleanAuthorName(winners[0].author) ? '<br>«'+esc(winners[0].story_title)+'»' : ''}</div>
-        ${winners.length > 1 ? `<div style="margin-top:12px">${winnerListHtml}</div>` : ''}
+        <div class="meta">${esc(roundName)}</div>
+        ${winners.length > 1 ? `<div style="margin-top:12px">${winnerListHtml}</div>` : singleTitle}
       ` : `<div class="empty">Победитель в данный момент не выбран. Пожалуйста, подождите.</div>`;
 
       $('roundSummaryCard').innerHTML = `
@@ -1184,7 +1308,7 @@
         <div class="label">${effLeaders.length > 1 ? 'лидеры' : 'лидер'} по эффективности</div>
         <div class="big winner-name">${namesLine(effLeaders)}</div>
         <div class="metric">${fmtPct(effLeaders[0].winRate)}</div>
-        <div class="meta">Побед к числу рассказов<br><span style="color:#9fb0c0">Учитываются только раунды, где уже выбран победитель.</span></div>` : `<div class="empty">Пока нет авторов с 2+ рассказами.</div>`;
+        <div class="meta">Побед к числу рассказов<br><span style="color:#9fb0c0">Среди авторов, написавших больше 3 рассказов. Учитываются только раунды, где уже выбран победитель.</span></div>` : `<div class="empty">Пока нет авторов с 4+ рассказами. Лидер по эффективности определяется среди тех, кто написал больше 3 рассказов.</div>`;
 
       $('winsTable').innerHTML = tableHtml(['#','Автор','Побед','Рассказов','Голосов всего'], stats.winsRank.map((a,i)=>[
         i+1, esc(a.author), `<span class="num">${a.wins}</span>`, `<span class="num">${a.stories}</span>`, `<span class="num">${a.totalVotes || '—'}</span>`
@@ -1192,6 +1316,7 @@
       $('effTable').innerHTML = tableHtml(['#','Автор','% побед','Побед','Учтённых рассказов'], stats.effRank.map((a,i)=>[
         i+1, esc(a.author), `<span class="num">${fmtPct(a.winRate)}</span>`, `<span class="num">${a.effectiveWins}</span>`, `<span class="num">${a.effectiveStories}</span>`
       ]));
+      renderLikesLeader();
     }
 
     function hashName(name) {
@@ -1280,6 +1405,9 @@
       if (!a) { box.innerHTML = `<div class="empty">Выберите автора.</div>`; return; }
       const onHill = stats.king.some(k => k.author === a.author);
       const best = a.best;
+      const likeTotals = likesTotals();
+      const maxLikes = Math.max(0, ...Object.values(likeTotals));
+      const isLikesLeader = (likeTotals[a.author] || 0) > 0 && (likeTotals[a.author] || 0) === maxLikes;
       const profileRounds = stats.countedRounds && stats.countedRounds.length ? stats.countedRounds : [];
       const timeline = profileRounds.length ? profileRounds.map(round => {
         const r = a.all.find(x => x.round === round);
@@ -1290,7 +1418,7 @@
         <article class="card ${onHill?'gold':'blue'}">
           <div class="label">личное дело</div>
           <div class="big">${esc(a.author)}</div>
-          <div class="pill-row"><span class="pill ${onHill?'gold':'blue'}">${onHill?'царь горы':'наблюдать'}</span><span class="pill">рассказов: ${a.stories}</span><span class="pill green">побед: ${a.wins}</span></div>
+          <div class="pill-row"><span class="pill ${onHill?'gold':'blue'}">${onHill?'царь горы':'наблюдать'}</span>${isLikesLeader ? '<span class="pill rust">❤️ лидер по лайкам</span>' : ''}<span class="pill">рассказов: ${a.stories}</span><span class="pill green">побед: ${a.wins}</span></div>
           <div class="grid cols-3" style="margin-top:16px">
             <div><div class="label">голосов всего</div><div class="metric" style="font-size:38px">${a.totalVotes}</div></div>
             <div><div class="label">% побед</div><div class="metric" style="font-size:38px">${fmtPct(a.winRate)}</div></div>
@@ -1465,7 +1593,10 @@
     $('saveLikesApi').onclick = () => {
       localStorage.setItem('niiFigaLikesApiUrl', $('likesApiUrl').value.trim());
       likesCache = {};
+      try { localStorage.removeItem(LIKES_CACHE_KEY); } catch (e) {}
       renderRounds();
+      renderLikesLeader();
+      loadAllLikes();
       setStatus('URL сервера лайков сохранён.', 'ok');
     };
 
@@ -1520,6 +1651,7 @@
     $('autoRefresh').onchange = setupAutoRefresh;
 
     (async function init(){
+      loadPersistedLikes();
       const saved = localStorage.getItem('niiFigaDataUrl') || DEFAULT_GOOGLE_SHEET_URL;
       const auto = localStorage.getItem('niiFigaAutoRefresh') === '1';
       $('dataUrl').value = saved;
@@ -1545,5 +1677,5 @@
     })();
   </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a42451c9ef38a8bc',t:'MTc5MDYxNDk4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
